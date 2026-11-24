@@ -1,4 +1,6 @@
 <?php
+// Near Me (live: results from nearme_list = the Professional & Business Directory, by GPS distance or city / area)
+require_once dirname(__DIR__) . '/_web.php';
 include 'header.php';
 ?>
 
@@ -110,7 +112,8 @@ include 'header.php';
                     <input type="text" id="areaSearch" placeholder="Area or locality" aria-label="Search by area or locality">
                 </div>
 
-                <button type="submit" class="near-btn near-btn-primary near-search-submit">
+                <div class="near-search-field"><i class="bi bi-bullseye"></i><select id="nmRadius" aria-label="Distance"><?php foreach ([2, 5, 10, 25, 50] as $km): ?><option value="<?= $km ?>"<?= $km === 10 ? ' selected' : '' ?>>Within <?= $km ?> km</option><?php endforeach; ?></select></div>
+<button type="submit" class="near-btn near-btn-primary near-search-submit">
                     <i class="bi bi-search"></i> Search
                 </button>
             </form>
@@ -211,7 +214,7 @@ include 'header.php';
                 <div>
                     <span class="near-eyebrow">LOCAL DIRECTORY</span>
                     <h2>Nearby Listings</h2>
-                    <p id="resultsSummary">Explore sample listings or connect your directory database.</p>
+                    <p id="resultsSummary">Choose a location to see nearby professionals and businesses.</p>
                 </div>
 
                 <div class="near-listing-controls">
@@ -236,131 +239,9 @@ include 'header.php';
                 </div>
             </div>
 
-            <!-- Demo listings: replace with database results -->
+            <!-- Live listings: filled by near-me-live.js from the nearme_list API -->
             <div class="near-listing-grid" id="listingGrid">
 
-                <article class="near-listing-card"
-                    data-name="City Care Clinic"
-                    data-category="Doctors"
-                    data-service="General Physician"
-                    data-area="Dehradun"
-                    data-description="Healthcare consultations and general medical services."
-                    data-distance="1.2"
-                    data-date="20261015"
-                    data-lat="30.3256"
-                    data-lng="78.0437"
-                    data-phone=""
-                    data-address="Dehradun, Uttarakhand"
-                    data-url="">
-
-                    <div class="listing-card-top">
-                        <div class="listing-business-icon cat-red">
-                            <i class="bi bi-heart-pulse"></i>
-                        </div>
-                        <span class="listing-type">Doctors</span>
-                    </div>
-
-                    <h3>City Care Clinic</h3>
-                    <p class="listing-service">General Physician</p>
-                    <p class="listing-description">Healthcare consultations and general medical services.</p>
-
-                    <div class="listing-meta">
-                        <span><i class="bi bi-geo-alt"></i> Dehradun</span>
-                        <span><i class="bi bi-signpost-2"></i> 1.2 km</span>
-                    </div>
-
-                    <div class="listing-actions">
-                        <a href="#" class="listing-view-details">View Details <i class="bi bi-arrow-up-right"></i></a>
-                        <button type="button" class="listing-contact" data-action="contact">
-                            <i class="bi bi-telephone"></i> Contact
-                        </button>
-                        <button type="button" class="listing-map" data-action="map" aria-label="View location">
-                            <i class="bi bi-geo-alt"></i>
-                        </button>
-                    </div>
-                </article>
-
-                <article class="near-listing-card"
-                    data-name="Sharma Legal Associates"
-                    data-category="Lawyers"
-                    data-service="Legal Consultation"
-                    data-area="Rajpur Road"
-                    data-description="Legal consultation for individuals and businesses."
-                    data-distance="2.4"
-                    data-date="20261012"
-                    data-lat="30.3500"
-                    data-lng="78.0600"
-                    data-phone=""
-                    data-address="Rajpur Road, Dehradun"
-                    data-url="">
-
-                    <div class="listing-card-top">
-                        <div class="listing-business-icon cat-purple">
-                            <i class="bi bi-briefcase"></i>
-                        </div>
-                        <span class="listing-type">Lawyers</span>
-                    </div>
-
-                    <h3>Sharma Legal Associates</h3>
-                    <p class="listing-service">Legal Consultation</p>
-                    <p class="listing-description">Legal consultation for individuals and businesses.</p>
-
-                    <div class="listing-meta">
-                        <span><i class="bi bi-geo-alt"></i> Rajpur Road</span>
-                        <span><i class="bi bi-signpost-2"></i> 2.4 km</span>
-                    </div>
-
-                    <div class="listing-actions">
-                        <a href="#" class="listing-view-details">View Details <i class="bi bi-arrow-up-right"></i></a>
-                        <button type="button" class="listing-contact" data-action="contact">
-                            <i class="bi bi-telephone"></i> Contact
-                        </button>
-                        <button type="button" class="listing-map" data-action="map" aria-label="View location">
-                            <i class="bi bi-geo-alt"></i>
-                        </button>
-                    </div>
-                </article>
-
-                <article class="near-listing-card"
-                    data-name="Green Leaf Restaurant"
-                    data-category="Restaurants"
-                    data-service="Restaurant & Dining"
-                    data-area="Clock Tower"
-                    data-description="Local dining and takeaway services."
-                    data-distance="0.8"
-                    data-date="20261016"
-                    data-lat="30.3250"
-                    data-lng="78.0410"
-                    data-phone=""
-                    data-address="Clock Tower, Dehradun"
-                    data-url="">
-
-                    <div class="listing-card-top">
-                        <div class="listing-business-icon cat-yellow">
-                            <i class="bi bi-cup-hot"></i>
-                        </div>
-                        <span class="listing-type">Restaurants</span>
-                    </div>
-
-                    <h3>Green Leaf Restaurant</h3>
-                    <p class="listing-service">Restaurant & Dining</p>
-                    <p class="listing-description">Local dining and takeaway services.</p>
-
-                    <div class="listing-meta">
-                        <span><i class="bi bi-geo-alt"></i> Clock Tower</span>
-                        <span><i class="bi bi-signpost-2"></i> 0.8 km</span>
-                    </div>
-
-                    <div class="listing-actions">
-                        <a href="#" class="listing-view-details">View Details <i class="bi bi-arrow-up-right"></i></a>
-                        <button type="button" class="listing-contact" data-action="contact">
-                            <i class="bi bi-telephone"></i> Contact
-                        </button>
-                        <button type="button" class="listing-map" data-action="map" aria-label="View location">
-                            <i class="bi bi-geo-alt"></i>
-                        </button>
-                    </div>
-                </article>
 
             </div>
 
@@ -428,6 +309,8 @@ include 'header.php';
     </div>
 </main>
 
+<script>window.NM=<?= json_encode(['categories' => array_values(array_map(fn($c) => $c['name'], array_filter(pl_categories('directory'), fn($c) => !$c['parent_id']))), 'city' => (string)($webUser['city'] ?? ''), 'radius' => 10], JSON_HEX_TAG | JSON_HEX_AMP) ?>;</script>
+<script src="near-me-live.js?v=1"></script>
 <?php
  include 'footer.php';
 ?>

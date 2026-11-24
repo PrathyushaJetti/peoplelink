@@ -1,4 +1,10 @@
-<?php include 'header.php'; ?>
+<?php
+// Directory Home (live: approved professionals and businesses of the member's community)
+require_once __DIR__ . '/_web.php';
+$dhAll = array_map('web_dir_card', web_ent_list('directory', ['sort' => 'recent'], 24)['items'] ?? []);
+$dhPros = array_slice(array_values(array_filter($dhAll, fn($d) => !$d['is_business'])), 0, 3);
+$dhBiz = array_slice(array_values(array_filter($dhAll, fn($d) => $d['is_business'])), 0, 4);
+include 'header.php'; ?>
 
 <div class="pl-directory-page">
 
@@ -806,185 +812,25 @@
 
 
             <div class="pl-professional-grid">
-
-
+                <?php if (!$dhPros): ?><p style="grid-column:1/-1;text-align:center">No professionals listed yet. <a href="bussiness/submit-professional-business-listing.php?type=Professional">Add your professional profile</a>.</p><?php endif; ?>
+                <?php foreach ($dhPros as $d): ?>
                 <div class="pl-professional-card">
-
-                    <div class="pl-profile-top">
-
-                        <div class="pl-profile-image">
-                            <i class="bi bi-person"></i>
-                        </div>
-
-                        <span class="pl-verified">
-                            <i class="bi bi-patch-check-fill"></i>
-                            Verified
-                        </span>
-
-                    </div>
-
-                    <h3>Professional Name</h3>
-
-                    <strong>
-                        Doctor
-                    </strong>
-
-                    <span class="pl-specialisation">
-                        Medical Specialist
-                    </span>
-
+                    <div class="pl-profile-top"><div class="pl-profile-image"><?php if ($d['image']): ?><img src="<?= h($d['image']) ?>" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:inherit"><?php else: ?><i class="bi bi-person"></i><?php endif; ?></div><span class="pl-verified"><i class="bi bi-patch-check-fill"></i> Verified</span></div>
+                    <h3><?= h($d['title']) ?></h3>
+                    <strong><?= h($d['category_name']) ?></strong>
+                    <span class="pl-specialisation"><?= h($d['subcategory_name'] ?? $d['qualification'] ?? '') ?></span>
                     <div class="pl-profile-info">
-
-                        <span>
-                            <i class="bi bi-award"></i>
-                            10+ Years Experience
-                        </span>
-
-                        <span>
-                            <i class="bi bi-building"></i>
-                            Organisation / Business
-                        </span>
-
-                        <span>
-                            <i class="bi bi-geo-alt"></i>
-                            City, State
-                        </span>
-
+                        <?php if (!empty($d['experience_years'])): ?><span><i class="bi bi-award"></i> <?= (int)$d['experience_years'] ?>+ Years Experience</span><?php endif; ?>
+                        <?php if (!empty($d['business_name'])): ?><span><i class="bi bi-building"></i> <?= h($d['business_name']) ?></span><?php endif; ?>
+                        <span><i class="bi bi-geo-alt"></i> <?= h($d['location_text']) ?></span>
                     </div>
-
-                    <p>
-                        Short professional introduction can appear here
-                        to help users understand the professional's expertise.
-                    </p>
-
-                    <a href="#"
-                       class="pl-card-button">
-                        View Profile
-                        <i class="bi bi-arrow-right"></i>
-                    </a>
-
+                    <p><?= h(mb_strimwidth((string)$d['description'], 0, 140, '…')) ?></p>
+                    <a href="<?= h($d['url']) ?>" class="pl-card-button">View Profile <i class="bi bi-arrow-right"></i></a>
                 </div>
-
-
-                <div class="pl-professional-card">
-
-                    <div class="pl-profile-top">
-
-                        <div class="pl-profile-image purple">
-                            <i class="bi bi-person"></i>
-                        </div>
-
-                        <span class="pl-verified">
-                            <i class="bi bi-patch-check-fill"></i>
-                            Verified
-                        </span>
-
-                    </div>
-
-                    <h3>Professional Name</h3>
-
-                    <strong>
-                        Lawyer
-                    </strong>
-
-                    <span class="pl-specialisation">
-                        Corporate & Legal Services
-                    </span>
-
-                    <div class="pl-profile-info">
-
-                        <span>
-                            <i class="bi bi-award"></i>
-                            8+ Years Experience
-                        </span>
-
-                        <span>
-                            <i class="bi bi-building"></i>
-                            Organisation / Business
-                        </span>
-
-                        <span>
-                            <i class="bi bi-geo-alt"></i>
-                            City, State
-                        </span>
-
-                    </div>
-
-                    <p>
-                        Short professional introduction can appear here
-                        to help users understand the professional's expertise.
-                    </p>
-
-                    <a href="#"
-                       class="pl-card-button">
-                        View Profile
-                        <i class="bi bi-arrow-right"></i>
-                    </a>
-
-                </div>
-
-
-                <div class="pl-professional-card">
-
-                    <div class="pl-profile-top">
-
-                        <div class="pl-profile-image green">
-                            <i class="bi bi-person"></i>
-                        </div>
-
-                        <span class="pl-verified">
-                            <i class="bi bi-patch-check-fill"></i>
-                            Verified
-                        </span>
-
-                    </div>
-
-                    <h3>Professional Name</h3>
-
-                    <strong>
-                        IT Professional
-                    </strong>
-
-                    <span class="pl-specialisation">
-                        Technology & Digital Services
-                    </span>
-
-                    <div class="pl-profile-info">
-
-                        <span>
-                            <i class="bi bi-award"></i>
-                            7+ Years Experience
-                        </span>
-
-                        <span>
-                            <i class="bi bi-building"></i>
-                            Organisation / Business
-                        </span>
-
-                        <span>
-                            <i class="bi bi-geo-alt"></i>
-                            City, State
-                        </span>
-
-                    </div>
-
-                    <p>
-                        Short professional introduction can appear here
-                        to help users understand the professional's expertise.
-                    </p>
-
-                    <a href="#"
-                       class="pl-card-button">
-                        View Profile
-                        <i class="bi bi-arrow-right"></i>
-                    </a>
-
-                </div>
-
+                <?php endforeach; ?>
             </div>
-
+            <div style="text-align:center;margin-top:20px"><a class="pl-card-button" style="display:inline-flex" href="bussiness/professional-and-business-directory-search-results.php?type=Professional">View all professionals <i class="bi bi-arrow-right"></i></a></div>
         </div>
-
     </section>
 
 
@@ -1015,163 +861,22 @@
 
 
             <div class="pl-business-listing-grid">
-
-
+                <?php if (!$dhBiz): ?><p style="grid-column:1/-1;text-align:center">No businesses listed yet. <a href="bussiness/submit-professional-business-listing.php?type=Business">Add your business</a>.</p><?php endif; ?>
+                <?php foreach ($dhBiz as $i => $d): ?>
                 <div class="pl-business-listing-card">
-
-                    <div class="pl-business-logo">
-                        <i class="bi bi-shop"></i>
-                    </div>
-
+                    <div class="pl-business-logo<?= ['', ' green', ' orange', ' purple'][$i % 4] ?>"><?php if ($d['image']): ?><img src="<?= h($d['image']) ?>" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:inherit"><?php else: ?><i class="bi bi-shop"></i><?php endif; ?></div>
                     <div class="pl-business-listing-content">
-
-                        <div class="pl-business-title-row">
-
-                            <div>
-
-                                <h3>
-                                    Business Name
-                                </h3>
-
-                                <span>
-                                    Retail & Services
-                                </span>
-
-                            </div>
-
-                            <i class="bi bi-patch-check-fill"></i>
-
-                        </div>
-
-
-                        <div class="pl-business-meta">
-
-                            <span>
-                                <i class="bi bi-person"></i>
-                                Owner / Contact Person
-                            </span>
-
-                            <span>
-                                <i class="bi bi-geo-alt"></i>
-                                City, State
-                            </span>
-
-                        </div>
-
-
-                        <p>
-                            Short business description can appear here,
-                            explaining the products and services offered.
-                        </p>
-
-
-                        <div class="pl-business-services">
-
-                            <span>Products</span>
-                            <span>Services</span>
-                            <span>Local Business</span>
-
-                        </div>
-
-
-                        <div class="pl-business-actions">
-
-                            <a href="#">
-                                View Business
-                                <i class="bi bi-arrow-right"></i>
-                            </a>
-
-                            <a href="#">
-                                <i class="bi bi-globe"></i>
-                                Website
-                            </a>
-
-                        </div>
-
+                        <div class="pl-business-title-row"><div><h3><?= h($d['title']) ?></h3><span><?= h($d['category_text']) ?></span></div><i class="bi bi-patch-check-fill"></i></div>
+                        <div class="pl-business-meta"><span><i class="bi bi-person"></i> <?= h($d['name']) ?></span><span><i class="bi bi-geo-alt"></i> <?= h($d['location_text']) ?></span></div>
+                        <p><?= h(mb_strimwidth((string)$d['description'], 0, 160, '…')) ?></p>
+                        <?php if ($d['services_list']): ?><div class="pl-business-services"><?php foreach (array_slice($d['services_list'], 0, 4) as $sv): ?><span><?= h($sv) ?></span><?php endforeach; ?></div><?php endif; ?>
+                        <div class="pl-business-actions"><a href="<?= h($d['url']) ?>">View Business <i class="bi bi-arrow-right"></i></a><?php if (!empty($d['website'])): ?><a href="<?= h($d['website']) ?>" target="_blank" rel="noopener"><i class="bi bi-globe"></i> Website</a><?php endif; ?></div>
                     </div>
-
                 </div>
-
-
-                <div class="pl-business-listing-card">
-
-                    <div class="pl-business-logo green">
-                        <i class="bi bi-laptop"></i>
-                    </div>
-
-                    <div class="pl-business-listing-content">
-
-                        <div class="pl-business-title-row">
-
-                            <div>
-
-                                <h3>
-                                    Business Name
-                                </h3>
-
-                                <span>
-                                    IT Services
-                                </span>
-
-                            </div>
-
-                            <i class="bi bi-patch-check-fill"></i>
-
-                        </div>
-
-
-                        <div class="pl-business-meta">
-
-                            <span>
-                                <i class="bi bi-person"></i>
-                                Owner / Contact Person
-                            </span>
-
-                            <span>
-                                <i class="bi bi-geo-alt"></i>
-                                City, State
-                            </span>
-
-                        </div>
-
-
-                        <p>
-                            Short business description can appear here,
-                            explaining the products and services offered.
-                        </p>
-
-
-                        <div class="pl-business-services">
-
-                            <span>Technology</span>
-                            <span>Web Services</span>
-                            <span>Consulting</span>
-
-                        </div>
-
-
-                        <div class="pl-business-actions">
-
-                            <a href="#">
-                                View Business
-                                <i class="bi bi-arrow-right"></i>
-                            </a>
-
-                            <a href="#">
-                                <i class="bi bi-globe"></i>
-                                Website
-                            </a>
-
-                        </div>
-
-                    </div>
-
-                </div>
-
+                <?php endforeach; ?>
             </div>
-
+            <div style="text-align:center;margin-top:20px"><a class="pl-card-button" style="display:inline-flex" href="bussiness/professional-and-business-directory-search-results.php?type=Business">View all businesses <i class="bi bi-arrow-right"></i></a></div>
         </div>
-
     </section>
 
 
@@ -1557,4 +1262,37 @@
 
 
 
+<script>
+// Directory Home: real links (search, categories, add profile, near me)
+document.addEventListener('DOMContentLoaded', function () {
+  var R = 'bussiness/professional-and-business-directory-search-results.php';
+  var cats = <?= json_encode(array_values(array_map(fn($c) => $c['name'], array_filter(pl_categories('directory'), fn($c) => !$c['parent_id'])))) ?>;
+  // design words -> directory categories (others search by keyword)
+  var alias = {'Doctors':'Healthcare','Lawyers':'Legal','Chartered Accountants':'Finance / CA','IT Professionals':'IT & Technology','Teachers':'Education','Consultants':'Consulting','Architects':'Construction','Real Estate Professionals':'Real Estate','Financial Advisors':'Finance / CA','Retail':'Retail','Manufacturing':'Manufacturing','Healthcare':'Healthcare','Education':'Education','Construction':'Construction','Real Estate':'Real Estate','IT Services':'IT & Technology','Finance':'Finance / CA','Food & Hospitality':'Event Services','Professional Services':'Consulting'};
+  function urlFor(word) {
+    word = (word || '').trim();
+    var c = alias[word] || (cats.indexOf(word) !== -1 ? word : '');
+    return R + '?' + (c ? 'category=' + encodeURIComponent(c) : 'keyword=' + encodeURIComponent(word));
+  }
+  document.querySelectorAll('a.pl-category-card').forEach(function (a) { var s = a.querySelector('strong'); if (s) a.href = urlFor(s.textContent); });
+  document.querySelectorAll('.pl-business-card').forEach(function (d) { var s = d.querySelector('strong'); if (!s) return; d.style.cursor = 'pointer'; d.addEventListener('click', function () { location.href = urlFor(s.textContent); }); });
+  var btn = document.getElementById('directorySearchBtn');
+  if (btn) btn.addEventListener('click', function (e) {
+    e.preventDefault(); e.stopImmediatePropagation();
+    var q = new URLSearchParams();
+    var k = document.getElementById('directoryKeyword'); if (k && k.value.trim()) q.set('keyword', k.value.trim());
+    var p = document.getElementById('professionFilter'), b = document.getElementById('businessFilter');
+    var pick = (p && p.value) ? p.value : ((b && b.value) ? b.value : '');
+    if (pick) { var c = alias[pick] || (cats.indexOf(pick) !== -1 ? pick : ''); if (c) q.set('category', c); else q.set('keyword', ((q.get('keyword') || '') + ' ' + pick).trim()); }
+    if (p && p.value && !(b && b.value)) q.set('type', 'Professional'); else if (b && b.value && !(p && p.value)) q.set('type', 'Business');
+    location.href = R + '?' + q.toString();
+  }, true);
+  var kw = document.getElementById('directoryKeyword');
+  if (kw) kw.addEventListener('keydown', function (e) { if (e.key === 'Enter' && btn) { e.preventDefault(); btn.click(); } });
+  document.querySelectorAll('.pl-add-card.professional a.pl-add-button').forEach(function (a) { a.href = 'bussiness/submit-professional-business-listing.php?type=Professional'; });
+  document.querySelectorAll('.pl-add-card.business a.pl-add-button').forEach(function (a) { a.href = 'bussiness/submit-professional-business-listing.php?type=Business'; });
+  var nm = document.getElementById('nearMeButton');
+  if (nm) nm.addEventListener('click', function (e) { e.stopImmediatePropagation(); location.href = 'near-me.php'; }, true);
+});
+</script>
 <?php include 'footer.php'; ?>

@@ -1,12 +1,84 @@
-<?php include 'header.php'; ?>
+<?php
+// Submit / Edit Directory Profile (live: directory_create / directory_update, photos to the profile gallery, admin approval)
+require_once dirname(__DIR__) . '/_web.php';
+web_require_login();
+web_require_community();
+$E = pl_entity('directory');
+$dsEditId = (int)($_GET['edit'] ?? $_POST['edit_id'] ?? 0);
+$dsEdit = $dsEditId ? pl_api_own($E, $dsEditId, $webUid) : null;
+if ($dsEditId && !$dsEdit) { flash('Profile not found.', 'error'); header('Location: my-directory-listings.php'); exit; }
+$dsCats = array_values(array_filter(pl_categories('directory'), fn($c) => !$c['parent_id']));
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    header('Content-Type: application/json; charset=utf-8');
+    if (!hash_equals((string)($_SESSION['csrf'] ?? ''), (string)($_POST['csrf'] ?? ''))) { echo json_encode(['ok' => false, 'error' => 'Your session expired. Please refresh the page and try again.']); exit; }
+    $in = $_POST; $biz = ($in['listing_type'] ?? '') === 'business';
+    $catId = 0; foreach ($dsCats as $c) if (strcasecmp($c['name'], (string)($in['category'] ?? '')) === 0) $catId = (int)$c['id'];
+    if (!$catId) { echo json_encode(['ok' => false, 'error' => 'Please choose a category.']); exit; }
+    $sub = trim((string)($in['subcategory'] ?? ''));
+    $subId = $sub !== '' ? (int)(rows("SELECT id FROM categories WHERE module='directory' AND parent_id=? AND LOWER(name)=LOWER(?) LIMIT 1", [$catId, $sub])[0]['id'] ?? 0) : 0;
+    $t = fn($k) => trim((string)($in[$k] ?? ''));
+    $map = [
+        'profile_type' => $biz ? 'Business' : 'Professional',
+        'name' => $biz ? ($t('contact_person') ?: $t('listing_name')) : ($t('full_name') ?: $t('listing_name')),
+        'business_name' => $biz ? ($t('business_name') ?: $t('listing_name')) : $t('listing_name'),
+        'category_id' => $catId, 'subcategory_id' => $subId ?: '',
+        'description' => $t('short_description'),
+        'experience_years' => $t('experience_years') !== '' ? (int)$t('experience_years') : '',
+        'qualification' => $t('qualification'),
+        'services' => $biz ? $t('business_services') : trim($t('specialization') . ($t('skills') !== '' ? ', ' . $t('skills') : ''), ', '),
+        'address' => $t('address'), 'area' => $t('locality'), 'city' => $t('city'), 'state' => $t('state'), 'pincode' => $t('pincode'),
+        'phone' => $t('mobile'), 'whatsapp' => $t('whatsapp'), 'email' => $t('email'), 'website' => $t('website') ?: $t('business_website'),
+    ];
+    // extra details shown on the profile page
+    foreach (['specialization', 'designation', 'professional_experience', 'skills', 'languages', 'established_year', 'business_type', 'map_link', 'service_areas'] as $k) if ($t($k) !== '') $map[$k] = $t($k);
+    if ($sub !== '' && !$subId) $map['speciality'] = $sub;
+    if (!empty($in['service_mode'])) $map['service_mode'] = ucwords(implode(', ', (array)$in['service_mode']));
+    $map['contact_privacy'] = isset($in['contact_privacy']) ? 'Show' : 'On request';
+    // photo / logo -> the profile's main image; service images -> gallery
+    $logo = $_FILES['business_logo'] ?? null; if (!$logo || ($logo['error'] ?? 4) === UPLOAD_ERR_NO_FILE) $logo = $_FILES['profile_photo'] ?? null;
+    $files = [];
+    if ($logo && ($logo['error'] ?? 4) !== UPLOAD_ERR_NO_FILE) $files['logo'] = $logo;
+    if (!empty($_FILES['service_images'])) $files['service_images'] = $_FILES['service_images'];
+    $_FILES = $files;
+    if ($dsEdit) $map['id'] = $dsEditId;
+    $_POST = ['csrf' => $in['csrf']];
+    $r = web_call($dsEdit ? 'directory_update' : 'directory_create', $map + ['csrf' => $in['csrf']], true);
+    if (!empty($r['error'])) { echo json_encode(['ok' => false, 'error' => $r['error']]); exit; }
+    $id = (int)($r['id'] ?? $r['item']['id'] ?? $dsEditId);
+    if ($dsEdit && pl_files_list(pl_api_files($E))) pl_media_add($E, $id, pl_api_files($E), $webUid);
+    echo json_encode(['ok' => true, 'id' => $id, 'message' => $r['message'] ?? 'Saved.', 'upload_error' => $r['upload_error'] ?? null]); exit;
+}
+
+// form values: edit mode from the saved profile, otherwise the member's account details
+if ($dsEdit) {
+    $x = json_decode((string)($dsEdit['details'] ?? ''), true) ?: [];
+    $biz = $dsEdit['profile_type'] === 'Business';
+    $cat = $dsEdit['category_id'] ? (rows('SELECT name FROM categories WHERE id=?', [(int)$dsEdit['category_id']])[0]['name'] ?? '') : '';
+    $sub = $dsEdit['subcategory_id'] ? (rows('SELECT name FROM categories WHERE id=?', [(int)$dsEdit['subcategory_id']])[0]['name'] ?? '') : ($x['speciality'] ?? '');
+    $dsFill = array_intersect_key($x, array_flip(['specialization', 'designation', 'professional_experience', 'skills', 'languages', 'established_year', 'business_type', 'map_link', 'service_areas'])) + [
+        'listing_type' => $biz ? 'business' : 'professional', 'listing_name' => $biz ? $dsEdit['business_name'] : ($dsEdit['business_name'] ?: $dsEdit['name']),
+        'category' => $cat, 'subcategory' => $sub, 'short_description' => $dsEdit['description'], 'experience_years' => (string)($dsEdit['experience_years'] ?? ''),
+        'qualification' => $dsEdit['qualification'], 'full_name' => $dsEdit['name'], 'contact_person' => $dsEdit['name'], 'business_name' => $dsEdit['business_name'],
+        'business_services' => $dsEdit['services'], 'mobile' => preg_replace('/\D/', '', (string)$dsEdit['phone']), 'whatsapp' => preg_replace('/\D/', '', (string)$dsEdit['whatsapp']),
+        'email' => $dsEdit['email'], 'website' => $dsEdit['website'], 'business_website' => $dsEdit['website'], 'address' => $dsEdit['address'],
+        'locality' => $dsEdit['area'], 'city' => $dsEdit['city'], 'state' => $dsEdit['state'], 'pincode' => $dsEdit['pincode'],
+        'service_mode' => array_map('strtolower', array_map('trim', explode(',', (string)($x['service_mode'] ?? '')))),
+    ];
+} else {
+    $t0 = strtolower((string)($_GET['type'] ?? ''));
+    $dsFill = ['full_name' => $webUser['name'] ?? '', 'contact_person' => $webUser['name'] ?? '', 'mobile' => preg_replace('/\D/', '', (string)($webUser['phone'] ?? '')), 'email' => $webUser['email'] ?? '']
+        + (in_array($t0, ['professional', 'business'], true) ? ['listing_type' => $t0] : []);
+}
+include 'header.php'; ?>
 
 <main class="pl-submit-listing-page">
     <section class="pl-submit-hero">
         <div class="pl-submit-container">
             <nav class="pl-submit-breadcrumb" aria-label="Breadcrumb">
-                <a href="community-dashboard.html">Home</a>
+                <a href="../community-home.php">Home</a>
                 <i class="bi bi-chevron-right" aria-hidden="true"></i>
-                <a href="professional-and-business-directory-search-results.html">Directory</a>
+                <a href="professional-and-business-directory-search-results.php">Directory</a>
                 <i class="bi bi-chevron-right" aria-hidden="true"></i>
                 <span>Add Your Listing</span>
             </nav>
@@ -67,7 +139,7 @@
                         <div class="pl-form-section-heading"><span class="pl-form-section-icon"><i class="bi bi-card-text" aria-hidden="true"></i></span><div><h3>2. Basic Information</h3><p>Tell people what you do and what makes your listing useful.</p></div></div>
                         <div class="pl-form-grid">
                             <div class="pl-form-field pl-field-full"><label for="plListingName">Professional / Business Name <span>*</span></label><input id="plListingName" name="listing_name" type="text" placeholder="Enter professional or business name" required maxlength="120"><small class="pl-field-error"></small></div>
-                            <div class="pl-form-field"><label for="plCategory">Category <span>*</span></label><select id="plCategory" name="category" required><option value="">Select category</option><option>Technology &amp; IT</option><option>Accounting &amp; Finance</option><option>Education &amp; Training</option><option>Healthcare</option><option>Legal Services</option><option>Design &amp; Marketing</option><option>Food &amp; Retail</option><option>Home &amp; Repair Services</option><option>Manufacturing</option><option>Other</option></select><small class="pl-field-error"></small></div>
+                            <div class="pl-form-field"><label for="plCategory">Category <span>*</span></label><select id="plCategory" name="category" required><option value="">Select category</option><?php foreach ($dsCats as $c): ?><option value="<?= h($c['name']) ?>"><?= h($c['name']) ?></option><?php endforeach; ?></select><small class="pl-field-error"></small></div>
                             <div class="pl-form-field"><label for="plSubcategory">Subcategory</label><input id="plSubcategory" name="subcategory" type="text" placeholder="e.g. Web Development"></div>
                             <div class="pl-form-field pl-field-full"><label for="plSpecialization">Main Service / Specialization <span>*</span></label><input id="plSpecialization" name="specialization" type="text" placeholder="What is your main service or speciality?" required maxlength="160"><small class="pl-field-error"></small></div>
                             <div class="pl-form-field pl-field-full"><label for="plShortDescription">Short Description <span>*</span></label><textarea id="plShortDescription" name="short_description" rows="4" maxlength="500" placeholder="Briefly describe your services, experience or business..." required></textarea><div class="pl-field-foot"><small class="pl-field-error"></small><small><span id="plDescriptionCount">0</span>/500 characters</small></div></div>
@@ -170,7 +242,7 @@
                     <div class="pl-review-step"><span>2</span><div><strong>Community review</strong><small>Approval, if required.</small></div></div>
                     <div class="pl-review-step"><span>3</span><div><strong>Go live</strong><small>People can discover your listing.</small></div></div>
                 </div>
-                <div class="pl-submit-sidebar-help"><i class="bi bi-headset" aria-hidden="true"></i><div><strong>Need help?</strong><p>Contact PeopleLink support if you need assistance creating your listing.</p><a href="contact.html">Contact Support <i class="bi bi-arrow-up-right" aria-hidden="true"></i></a></div></div>
+                <div class="pl-submit-sidebar-help"><i class="bi bi-headset" aria-hidden="true"></i><div><strong>Need help?</strong><p>Contact PeopleLink support if you need assistance creating your listing.</p><a href="../about.php">Contact Support <i class="bi bi-arrow-up-right" aria-hidden="true"></i></a></div></div>
             </aside>
         </div>
     </section>
@@ -197,5 +269,6 @@
     <div class="pl-submit-toast" id="plSubmitToast" role="status" aria-live="polite"></div>
 </main>
 
+<script>window.DS_EDIT_ID=<?= (int)($dsEdit['id'] ?? 0) ?>;window.DS_FILL=<?= json_encode($dsFill, JSON_HEX_TAG | JSON_HEX_AMP) ?>;</script>
 <?php include 'footer.php'; ?>
 

@@ -529,6 +529,7 @@
 
 </footer>
 
-<script src="main.js"></script>
+<?php if (function_exists('web_js_boot')) echo web_js_boot(); ?>
+<script src="main.js?v=2"></script>
 </body>
 </html>

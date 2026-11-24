@@ -1,4 +1,18 @@
-<?php include 'header.php'; ?>
+<?php
+// Saved Professionals & Businesses (live: the member's saved directory profiles — directory_saved / directory_save)
+require_once dirname(__DIR__) . '/_web.php';
+web_require_login();
+$_REQUEST['per'] = 50; $_REQUEST['page'] = 1;
+$svItems = array_map('web_dir_card', web_call('directory_saved', ['per' => 50])['items'] ?? []);
+$svAt = array_column(rows("SELECT entity_id, created_at FROM favourites WHERE user_id=? AND entity='directory_profiles'", [$webUid]), 'created_at', 'entity_id');
+$svJs = array_map(fn($d) => ['id' => (int)$d['id'], 'type' => $d['is_business'] ? 'business' : 'professional', 'name' => $d['title'], 'category' => $d['category_name'],
+    'service' => implode(' · ', array_slice($d['services_list'], 0, 3)) ?: $d['category_text'], 'location' => $d['location_text'],
+    'description' => mb_strimwidth((string)$d['description'], 0, 160, '…'),
+    'image' => $d['image'] ?: 'https://ui-avatars.com/api/?background=0b4f8c&color=fff&name=' . rawurlencode($d['initials']),
+    'savedAt' => str_replace(' ', 'T', (string)($svAt[$d['id']] ?? $d['created_at'])), 'status' => 'active',
+    'profile' => 'professional-business-profile-details.php?id=' . (int)$d['id']], $svItems);
+include 'header.php'; ?>
+<script>window.SAVED_DIR=<?= json_encode($svJs, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_SLASHES) ?>;</script>
 
   <main class="pl-page">
     <section class="pl-hero">
@@ -10,7 +24,7 @@
             <span class="pl-eyebrow"><i class="bi bi-bookmark-heart"></i> YOUR PERSONAL DIRECTORY</span>
             <h1>Saved Professionals <span>&amp; Businesses</span></h1>
             <p>Keep trusted professionals and useful businesses close at hand. Your shortlist, all in one place.</p>
-            <div class="pl-hero-actions"><a class="pl-btn pl-btn-light" href="#savedListings"><i class="bi bi-bookmarks"></i> View saved listings</a><a class="pl-btn pl-btn-outline" href="professional-and-business-directory-search-results.html"><i class="bi bi-search"></i> Browse directory</a></div>
+            <div class="pl-hero-actions"><a class="pl-btn pl-btn-light" href="#savedListings"><i class="bi bi-bookmarks"></i> View saved listings</a><a class="pl-btn pl-btn-outline" href="professional-and-business-directory-search-results.php"><i class="bi bi-search"></i> Browse directory</a></div>
           </div>
           <div class="pl-hero-stat"><span class="stat-icon"><i class="bi bi-bookmark-star"></i></span><span class="stat-label">Saved listings</span><strong id="heroSavedCount">6</strong><span class="stat-foot"><i class="bi bi-shield-check"></i> Your shortlist at a glance</span></div>
         </div>
@@ -49,7 +63,7 @@
             <div class="empty-icon"><i class="bi bi-bookmark-heart"></i></div>
             <h3>You have not saved any professional or business listings yet.</h3>
             <p>Explore the directory and save listings you may want to contact later.</p>
-            <a class="pl-btn pl-btn-primary" href="professional-and-business-directory-search-results.html"><i class="bi bi-search"></i> Browse Directory</a>
+            <a class="pl-btn pl-btn-primary" href="professional-and-business-directory-search-results.php"><i class="bi bi-search"></i> Browse Directory</a>
           </div>
           <div class="pl-load-more-wrap" id="loadMoreWrap"><button class="pl-load-more" id="loadMore">Load more listings <i class="bi bi-arrow-down-circle"></i></button></div>
         </div>
@@ -62,7 +76,7 @@
             <div class="summary-tip"><i class="bi bi-lightbulb"></i><p>Save useful listings so you can compare options and reach out when you’re ready.</p></div>
           </div>
           <div class="sidebar-card quick-card">
-            <span class="side-icon green"><i class="bi bi-compass"></i></span><h3>Discover someone new</h3><p>Find trusted professionals and businesses from your community.</p><a href="professional-and-business-directory-search-results.html">Explore directory <i class="bi bi-arrow-up-right"></i></a>
+            <span class="side-icon green"><i class="bi bi-compass"></i></span><h3>Discover someone new</h3><p>Find trusted professionals and businesses from your community.</p><a href="professional-and-business-directory-search-results.php">Explore directory <i class="bi bi-arrow-up-right"></i></a>
           </div>
           <div class="sidebar-card privacy-card"><i class="bi bi-lock"></i><div><strong>Your shortlist is personal</strong><p>Your saved listings are intended for your account and future reference.</p></div></div>
         </aside>

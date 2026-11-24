@@ -1,4 +1,20 @@
-<?php include 'header.php'; ?>
+<?php
+// Directory Search Results (live: directory backend with the filters from the search pages)
+require_once dirname(__DIR__) . '/_web.php';
+$g = fn($k) => trim((string)($_GET[$k] ?? ''));
+$drType = ucfirst(strtolower($g('type') ?: $g('listing_type')));
+$drLoc = $g('location') ?: $g('city');
+$drFilters = array_filter([
+    'q' => trim($g('keyword') . ' ' . $g('name') . ' ' . $g('specialization')), 'category' => $g('category'),
+    'profile_type' => in_array($drType, ['Professional', 'Business'], true) ? $drType : '', 'area' => $g('area'),
+    'sort' => ['recent' => 'recent', 'name' => 'name'][$g('sort')] ?? '',
+], fn($v) => $v !== '');
+$drExtra = null; $drArgs = [];
+if ($drLoc !== '') { $drExtra = '(t.city LIKE ? OR t.area LIKE ? OR t.state LIKE ? OR t.pincode LIKE ?)'; $drArgs = array_fill(0, 4, "%$drLoc%"); }
+if ((int)$g('experience') > 0) { $drExtra = ($drExtra ? "$drExtra AND " : '') . 't.experience_years >= ?'; $drArgs[] = (int)$g('experience'); }
+$drRes = pl_ent_list(pl_entity('directory'), $webCid, $drFilters, $webUid, 1, 50, $drExtra, $drArgs);
+$drItems = array_map('web_dir_card', $drRes['items']);
+include 'header.php'; ?>
 
 <main class="pl-directory-results-page">
     <!-- Hero / Search -->
@@ -45,7 +61,7 @@
             <div class="pl-results-heading-row">
                 <div>
                     <div class="pl-results-breadcrumb">
-                        <a href="community-dashboard.php">Home</a>
+                        <a href="../community-home.php">Home</a>
                         <i class="bi bi-chevron-right" aria-hidden="true"></i>
                         <span>Directory Listings</span>
                     </div>
@@ -62,7 +78,7 @@
                 <div class="pl-results-count">
                     <span class="pl-results-count-icon"><i class="bi bi-card-list" aria-hidden="true"></i></span>
                     <div>
-                        <strong><span id="plResultsCount">6</span> Listings Found</strong>
+                        <strong><span id="plResultsCount"><?= count($drItems) ?></span> Listings Found</strong>
                         <span>Browse listings matching your interests and location.</span>
                     </div>
                 </div>
@@ -135,81 +151,20 @@
                     </div>
 
                     <div class="pl-results-list" id="plResultsList">
-                        <article class="pl-directory-card" data-type="professional" data-category="Web Development" data-location="Rishikesh, Uttarakhand" data-community="Arya Vysya" data-name="Ananya Sharma" data-date="2026-10-10" data-distance="2.4">
-                            <div class="pl-directory-card-avatar"><span>AS</span><span class="pl-directory-type-mark"><i class="bi bi-person-badge" aria-hidden="true"></i></span></div>
-                            <div class="pl-directory-card-body">
-                                <div class="pl-directory-card-topline"><span class="pl-directory-category">Web Development</span><button class="pl-directory-save" type="button" data-save-id="1" aria-pressed="false"><i class="bi bi-bookmark" aria-hidden="true"></i><span>Save</span></button></div>
-                                <h3>Ananya Sharma</h3>
-                                <p class="pl-directory-specialization">PHP, WordPress &amp; E-commerce Websites</p>
-                                <div class="pl-directory-meta"><span><i class="bi bi-geo-alt" aria-hidden="true"></i>Rishikesh, Uttarakhand</span><span><i class="bi bi-award" aria-hidden="true"></i>6 years of experience</span></div>
-                                <p class="pl-directory-description">Helping businesses build responsive websites and practical digital experiences.</p>
-                                <div class="pl-directory-community"><i class="bi bi-people" aria-hidden="true"></i> Arya Vysya Community</div>
-                                <div class="pl-directory-card-actions"><a class="pl-directory-view" href="professional-profile-details.php">View Profile <i class="bi bi-arrow-up-right" aria-hidden="true"></i></a><a class="pl-directory-contact" href="directory-enquiry.php"><i class="bi bi-chat-dots" aria-hidden="true"></i> Contact / Enquire</a></div>
-                            </div>
-                        </article>
-
-                        <article class="pl-directory-card" data-type="business" data-category="Design & Marketing" data-location="Dehradun, Uttarakhand" data-community="" data-name="Himalayan Creative Studio" data-date="2026-10-08" data-distance="24">
-                            <div class="pl-directory-card-avatar is-business"><span><i class="bi bi-building" aria-hidden="true"></i></span><span class="pl-directory-type-mark"><i class="bi bi-building" aria-hidden="true"></i></span></div>
-                            <div class="pl-directory-card-body">
-                                <div class="pl-directory-card-topline"><span class="pl-directory-category">Design &amp; Marketing</span><button class="pl-directory-save" type="button" data-save-id="2" aria-pressed="false"><i class="bi bi-bookmark" aria-hidden="true"></i><span>Save</span></button></div>
-                                <h3>Himalayan Creative Studio</h3>
-                                <p class="pl-directory-specialization">Branding, Social Media &amp; Digital Marketing</p>
-                                <div class="pl-directory-meta"><span><i class="bi bi-geo-alt" aria-hidden="true"></i>Dehradun, Uttarakhand</span><span><i class="bi bi-award" aria-hidden="true"></i>8 years in business</span></div>
-                                <p class="pl-directory-description">A creative studio supporting local and growing brands with digital marketing.</p>
-                                <div class="pl-directory-card-actions"><a class="pl-directory-view" href="business-profile-details.php">View Profile <i class="bi bi-arrow-up-right" aria-hidden="true"></i></a><a class="pl-directory-contact" href="directory-enquiry.php"><i class="bi bi-chat-dots" aria-hidden="true"></i> Contact / Enquire</a></div>
-                            </div>
-                        </article>
-
-                        <article class="pl-directory-card" data-type="professional" data-category="Accounting & Finance" data-location="Hyderabad, Telangana" data-community="Reddy" data-name="Rahul Reddy" data-date="2026-10-05" data-distance="1450">
-                            <div class="pl-directory-card-avatar"><span>RR</span><span class="pl-directory-type-mark"><i class="bi bi-person-badge" aria-hidden="true"></i></span></div>
-                            <div class="pl-directory-card-body">
-                                <div class="pl-directory-card-topline"><span class="pl-directory-category">Accounting &amp; Finance</span><button class="pl-directory-save" type="button" data-save-id="3" aria-pressed="false"><i class="bi bi-bookmark" aria-hidden="true"></i><span>Save</span></button></div>
-                                <h3>Rahul Reddy</h3>
-                                <p class="pl-directory-specialization">Tax Planning, GST &amp; Business Accounting</p>
-                                <div class="pl-directory-meta"><span><i class="bi bi-geo-alt" aria-hidden="true"></i>Hyderabad, Telangana</span><span><i class="bi bi-award" aria-hidden="true"></i>9 years of experience</span></div>
-                                <p class="pl-directory-description">Providing accounting support and clear financial guidance for small businesses.</p>
-                                <div class="pl-directory-community"><i class="bi bi-people" aria-hidden="true"></i> Reddy Community</div>
-                                <div class="pl-directory-card-actions"><a class="pl-directory-view" href="professional-profile-details.php">View Profile <i class="bi bi-arrow-up-right" aria-hidden="true"></i></a><a class="pl-directory-contact" href="directory-enquiry.php"><i class="bi bi-chat-dots" aria-hidden="true"></i> Contact / Enquire</a></div>
-                            </div>
-                        </article>
-
-                        <article class="pl-directory-card" data-type="business" data-category="Food & Retail" data-location="Haridwar, Uttarakhand" data-community="Kamma" data-name="Green Basket Foods" data-date="2026-09-29" data-distance="32.5">
-                            <div class="pl-directory-card-avatar is-business"><span><i class="bi bi-shop" aria-hidden="true"></i></span><span class="pl-directory-type-mark"><i class="bi bi-building" aria-hidden="true"></i></span></div>
-                            <div class="pl-directory-card-body">
-                                <div class="pl-directory-card-topline"><span class="pl-directory-category">Food &amp; Retail</span><button class="pl-directory-save" type="button" data-save-id="4" aria-pressed="false"><i class="bi bi-bookmark" aria-hidden="true"></i><span>Save</span></button></div>
-                                <h3>Green Basket Foods</h3>
-                                <p class="pl-directory-specialization">Fresh Produce, Grocery &amp; Local Delivery</p>
-                                <div class="pl-directory-meta"><span><i class="bi bi-geo-alt" aria-hidden="true"></i>Haridwar, Uttarakhand</span><span><i class="bi bi-award" aria-hidden="true"></i>5 years in business</span></div>
-                                <p class="pl-directory-description">A local retail business focused on fresh produce and convenient neighbourhood delivery.</p>
-                                <div class="pl-directory-community"><i class="bi bi-people" aria-hidden="true"></i> Kamma Community</div>
-                                <div class="pl-directory-card-actions"><a class="pl-directory-view" href="business-profile-details.php">View Profile <i class="bi bi-arrow-up-right" aria-hidden="true"></i></a><a class="pl-directory-contact" href="directory-enquiry.php"><i class="bi bi-chat-dots" aria-hidden="true"></i> Contact / Enquire</a></div>
-                            </div>
-                        </article>
-
-                        <article class="pl-directory-card" data-type="professional" data-category="Human Resources" data-location="Bengaluru, Karnataka" data-community="Kapu" data-name="Priya Naidu" data-date="2026-09-24" data-distance="2200">
-                            <div class="pl-directory-card-avatar"><span>PN</span><span class="pl-directory-type-mark"><i class="bi bi-person-badge" aria-hidden="true"></i></span></div>
-                            <div class="pl-directory-card-body">
-                                <div class="pl-directory-card-topline"><span class="pl-directory-category">Human Resources</span><button class="pl-directory-save" type="button" data-save-id="5" aria-pressed="false"><i class="bi bi-bookmark" aria-hidden="true"></i><span>Save</span></button></div>
-                                <h3>Priya Naidu</h3>
-                                <p class="pl-directory-specialization">Recruitment, HR Operations &amp; Career Guidance</p>
-                                <div class="pl-directory-meta"><span><i class="bi bi-geo-alt" aria-hidden="true"></i>Bengaluru, Karnataka</span><span><i class="bi bi-award" aria-hidden="true"></i>7 years of experience</span></div>
-                                <p class="pl-directory-description">Supporting candidates and businesses with recruitment and people operations.</p>
-                                <div class="pl-directory-community"><i class="bi bi-people" aria-hidden="true"></i> Kapu Community</div>
-                                <div class="pl-directory-card-actions"><a class="pl-directory-view" href="professional-profile-details.php">View Profile <i class="bi bi-arrow-up-right" aria-hidden="true"></i></a><a class="pl-directory-contact" href="directory-enquiry.php"><i class="bi bi-chat-dots" aria-hidden="true"></i> Contact / Enquire</a></div>
-                            </div>
-                        </article>
-
-                        <article class="pl-directory-card" data-type="business" data-category="Home & Repair Services" data-location="Rishikesh, Uttarakhand" data-community="" data-name="Reliable Home Services" data-date="2026-09-18" data-distance="4.1">
-                            <div class="pl-directory-card-avatar is-business"><span><i class="bi bi-tools" aria-hidden="true"></i></span><span class="pl-directory-type-mark"><i class="bi bi-building" aria-hidden="true"></i></span></div>
-                            <div class="pl-directory-card-body">
-                                <div class="pl-directory-card-topline"><span class="pl-directory-category">Home &amp; Repair Services</span><button class="pl-directory-save" type="button" data-save-id="6" aria-pressed="false"><i class="bi bi-bookmark" aria-hidden="true"></i><span>Save</span></button></div>
-                                <h3>Reliable Home Services</h3>
-                                <p class="pl-directory-specialization">Electrical, Plumbing &amp; Maintenance</p>
-                                <div class="pl-directory-meta"><span><i class="bi bi-geo-alt" aria-hidden="true"></i>Rishikesh, Uttarakhand</span><span><i class="bi bi-award" aria-hidden="true"></i>4 years in business</span></div>
-                                <p class="pl-directory-description">A local service team for everyday home repairs and maintenance requirements.</p>
-                                <div class="pl-directory-card-actions"><a class="pl-directory-view" href="business-profile-details.php">View Profile <i class="bi bi-arrow-up-right" aria-hidden="true"></i></a><a class="pl-directory-contact" href="directory-enquiry.php"><i class="bi bi-chat-dots" aria-hidden="true"></i> Contact / Enquire</a></div>
-                            </div>
-                        </article>
+            <?php foreach ($drItems as $d): ?>
+            <article class="pl-directory-card" data-type="<?= $d['is_business'] ? 'business' : 'professional' ?>" data-category="<?= h($d['category_name']) ?>" data-location="<?= h($d['location_text']) ?>" data-community="<?= h($d['community_name'] ?? '') ?>" data-name="<?= h($d['title']) ?>" data-date="<?= h(substr($d['created_at'], 0, 10)) ?>" data-distance="">
+                <div class="pl-directory-card-avatar<?= $d['is_business'] ? ' is-business' : '' ?>"><span><?php if ($d['image']): ?><img src="<?= h($d['image']) ?>" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:inherit"><?php elseif ($d['is_business']): ?><i class="bi bi-building" aria-hidden="true"></i><?php else: ?><?= h($d['initials']) ?><?php endif; ?></span><span class="pl-directory-type-mark"><i class="bi <?= $d['is_business'] ? 'bi-building' : 'bi-person-badge' ?>" aria-hidden="true"></i></span></div>
+                <div class="pl-directory-card-body">
+                    <div class="pl-directory-card-topline"><span class="pl-directory-category"><?= h($d['category_text']) ?></span><button class="pl-directory-save" type="button" data-live="1" data-save-id="<?= (int)$d['id'] ?>" data-saved="<?= !empty($d['saved']) ? '1' : '0' ?>" aria-pressed="<?= !empty($d['saved']) ? 'true' : 'false' ?>"><i class="bi <?= !empty($d['saved']) ? 'bi-bookmark-check-fill' : 'bi-bookmark' ?>" aria-hidden="true"></i><span><?= !empty($d['saved']) ? 'Saved' : 'Save' ?></span></button></div>
+                    <h3><?= h($d['title']) ?></h3>
+                    <p class="pl-directory-specialization"><?= h(implode(', ', array_slice($d['services_list'], 0, 3)) ?: ($d['qualification'] ?? '')) ?></p>
+                    <div class="pl-directory-meta"><span><i class="bi bi-geo-alt" aria-hidden="true"></i><?= h($d['location_text']) ?></span><?php if (!empty($d['experience_years'])): ?><span><i class="bi bi-award" aria-hidden="true"></i><?= (int)$d['experience_years'] ?> years <?= $d['is_business'] ? 'in business' : 'of experience' ?></span><?php endif; ?></div>
+                    <p class="pl-directory-description"><?= h(mb_strimwidth((string)$d['description'], 0, 150, '…')) ?></p>
+                    <?php if (!empty($d['community_name'])): ?><div class="pl-directory-community"><i class="bi bi-people" aria-hidden="true"></i> <?= h($d['community_name']) ?> Community</div><?php endif; ?>
+                    <div class="pl-directory-card-actions"><a class="pl-directory-view" href="professional-business-profile-details.php?id=<?= (int)$d['id'] ?>">View Profile <i class="bi bi-arrow-up-right" aria-hidden="true"></i></a><a class="pl-directory-contact" href="enquiry-contact.php?id=<?= (int)$d['id'] ?>"><i class="bi bi-chat-dots" aria-hidden="true"></i> Contact / Enquire</a></div>
+                </div>
+            </article>
+            <?php endforeach; ?>
                     </div>
 
                     <div class="pl-results-empty" id="plResultsEmpty" hidden>

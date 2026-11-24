@@ -529,6 +529,8 @@
 
 </footer>
 
-<script src="main.js"></script>
+<?php if (function_exists('web_js_boot')) echo web_js_boot(); ?>
+<?php if (isset($listing['id']) && function_exists('web_js_boot')): ?><script>window.ND_ID=<?= (int)$listing['id'] ?>;</script><?php endif; ?>
+<script src="main.js?v=2"></script>
 </body>
 </html><style>/* footer "Get In Touch": icon + text left-aligned on every page (other page styles share these class names) */.pl-footer .pl-contact-item{display:flex!important;align-items:center!important;justify-content:flex-start!important;text-align:left!important;gap:12px!important;width:100%;margin-left:0!important}.pl-footer .pl-contact-item>div:last-child{text-align:left!important;margin:0!important;flex:1 1 auto}.pl-footer .pl-contact-icon{margin:0!important;flex:0 0 42px}.pl-footer .pl-contact-item span,.pl-footer .pl-contact-item strong{text-align:left!important}</style>

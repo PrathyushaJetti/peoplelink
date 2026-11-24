@@ -110,6 +110,21 @@ function web_mp_card(array $m): array {
     ]);
 }
 
+/* A directory profile (professional / business) with the fields the directory designs use. */
+function web_dir_card(array $d): array {
+    $biz = ($d['profile_type'] ?? '') === 'Business';
+    $loc = trim(implode(', ', array_filter([$d['area'] ?? '', $d['city'] ?? '', $d['state'] ?? ''])), ', ');
+    $title = $biz ? ($d['business_name'] ?: $d['name']) : $d['name'];
+    $ini = strtoupper(implode('', array_map(fn($w) => mb_substr($w, 0, 1), array_slice(preg_split('/\s+/', trim(preg_replace('/^(dr|mr|mrs|ms)\.?\s+/i', '', (string)$title))), 0, 2))));
+    return array_merge($d, [
+        'is_business' => $biz, 'title' => $title, 'subtitle' => $biz ? $d['name'] : ($d['business_name'] ?? ''),
+        'location_text' => $loc !== '' ? $loc : 'Location not specified', 'initials' => $ini ?: 'PL',
+        'image' => $d['logo'] ?? $d['cover'] ?? null, 'category_text' => $d['subcategory_name'] ?? $d['category_name'] ?? '',
+        'services_list' => array_values(array_filter(array_map('trim', preg_split('/[,\n]+/', (string)($d['services'] ?? ''))))),
+        'url' => '/peoplelink/first/bussiness/professional-business-profile-details.php?id=' . (int)$d['id'],
+    ]);
+}
+
 /* Up-to-N latest listings of a registry module visible to the viewer (marketplace, directory, events ...). */
 function web_ent_list(string $key, array $filters = [], int $per = 12, int $page = 1): array {
     global $webCid, $webUid;

@@ -1,111 +1,56 @@
 <?php
-session_start();
-
-/*
-|--------------------------------------------------------------------------
-| PeopleLink - Near Me Listing Details
-|--------------------------------------------------------------------------
-| Demo data for the frontend.
-| Replace with a prepared database query using the selected listing ID.
-*/
-
-$listing = [
-    'id' => 101,
-    'name' => 'City Care Clinic',
-    'logo' => 'assets/images/default-business.png',
-    'category' => 'Doctors',
-    'service' => 'General Physician',
-    'distance' => '1.2 km',
-    'area' => 'Rajpur Road',
-    'city' => 'Dehradun',
-    'state' => 'Uttarakhand',
-    'description' => 'City Care Clinic provides general medical consultations and primary healthcare services for individuals and families.',
-    'services' => [
-        'General Physician Consultation',
-        'Primary Healthcare',
-        'Routine Health Checkups',
-        'Preventive Healthcare'
-    ],
-    'experience' => '8 years',
-    'working_hours' => 'Monday–Saturday, 9:00 AM–7:00 PM',
-    'service_area' => 'Dehradun and nearby areas',
-    'mobile' => '',
-    'whatsapp' => '',
-    'email' => '',
-    'website' => '',
-    'address' => 'Rajpur Road, Dehradun, Uttarakhand, India',
-    'latitude' => null,
-    'longitude' => null,
-    'is_verified' => false
-];
-
-$similarListings = [
-    [
-        'id' => 102,
-        'name' => 'Community Health Centre',
-        'category' => 'Hospitals',
-        'service' => 'Primary Healthcare',
-        'area' => 'Dehradun',
-        'distance' => '2.1 km',
-        'logo' => 'assets/images/default-business.png'
-    ],
-    [
-        'id' => 103,
-        'name' => 'Healthy Life Pharmacy',
-        'category' => 'Pharmacies',
-        'service' => 'Medicines and Healthcare',
-        'area' => 'Rajpur Road',
-        'distance' => '1.6 km',
-        'logo' => 'assets/images/default-business.png'
-    ],
-    [
-        'id' => 104,
-        'name' => 'Family Medical Services',
-        'category' => 'Doctors',
-        'service' => 'Family Healthcare',
-        'area' => 'Dehradun',
-        'distance' => '2.8 km',
-        'logo' => 'assets/images/default-business.png'
-    ]
-];
-
-function e($value) {
-    return htmlspecialchars((string)($value ?? ''), ENT_QUOTES, 'UTF-8');
+// Near Me – listing details (live: nearme_details = a Directory profile, with distance from the visitor's location)
+require_once dirname(__DIR__) . '/_web.php';
+$ndId = (int)($_GET['id'] ?? 0);
+$ndLat = is_numeric($_GET['lat'] ?? null) ? (float)$_GET['lat'] : null;
+$ndLng = is_numeric($_GET['lng'] ?? null) ? (float)$_GET['lng'] : null;
+$ndRes = $ndId ? web_call('nearme_details', array_filter(['id' => $ndId, 'lat' => $ndLat, 'lng' => $ndLng], fn($v) => $v !== null)) : ['error' => 'missing'];
+if (!empty($ndRes['error'])) {
+    flash($webUser ? 'This listing is not available.' : 'Please login to view this listing.', 'error');
+    header('Location: ' . ($webUser ? 'near-me.php' : DASHBOARD_URL . 'login.php?next=' . urlencode($_SERVER['REQUEST_URI'] ?? ''))); exit;
 }
+$nd = web_dir_card($ndRes['item']);
+$ndX = is_array($nd['details'] ?? null) ? $nd['details'] : [];
+$listing = [
+    'id' => (int)$nd['id'], 'name' => $nd['title'], 'logo' => $nd['image'] ?: 'assets/images/default-business.png',
+    'category' => $nd['category_name'], 'service' => $nd['subcategory_name'] ?? ($nd['services_list'][0] ?? ''),
+    'distance' => isset($nd['distance_km']) && $nd['distance_km'] !== null ? $nd['distance_km'] . ' km' : '',
+    'area' => $nd['area'] ?? '', 'city' => $nd['city'] ?? '', 'state' => $nd['state'] ?? '',
+    'description' => $nd['description'] ?? '', 'services' => $nd['services_list'],
+    'experience' => !empty($nd['experience_years']) ? (int)$nd['experience_years'] . ' years' : '',
+    'working_hours' => $ndX['working_hours'] ?? '', 'service_area' => $ndX['service_areas'] ?? (!empty($nd['service_radius_km']) ? 'Within ' . (int)$nd['service_radius_km'] . ' km' : ''),
+    'mobile' => $nd['phone'] ?? '', 'whatsapp' => $nd['whatsapp'] ?? '', 'email' => $nd['email'] ?? '', 'website' => $nd['website'] ?? '',
+    'address' => trim(implode(', ', array_filter([$nd['address'] ?? '', $nd['location_text']])), ', '),
+    'latitude' => $nd['latitude'] ?? null, 'longitude' => $nd['longitude'] ?? null, 'is_verified' => true,
+];
+// similar: nearby profiles in the same category (closest first when the visitor's location is known)
+$_REQUEST['per'] = 4; $_REQUEST['page'] = 1;
+$simRes = $ndLat !== null ? web_call('nearme_list', ['lat' => $ndLat, 'lng' => $ndLng, 'category_id' => $nd['category_id'], 'per' => 4]) : ['items' => web_ent_list('directory', ['category_id' => $nd['category_id']], 4)['items'] ?? []];
+$similarListings = [];
+foreach ($simRes['items'] ?? [] as $s) {
+    if ((int)$s['id'] === $ndId) continue;
+    $c = web_dir_card($s);
+    $similarListings[] = ['id' => (int)$c['id'], 'name' => $c['title'], 'category' => $c['category_name'], 'service' => $c['category_text'], 'area' => $c['area'] ?: $c['city'],
+        'distance' => isset($s['distance_km']) && $s['distance_km'] !== null ? $s['distance_km'] . ' km' : '', 'logo' => $c['image'] ?: 'assets/images/default-business.png'];
+}
+$similarListings = array_slice($similarListings, 0, 3);
 
 function hasValue($value) {
     return trim((string)($value ?? '')) !== '';
 }
 
-/*
- * In production, retrieve this listing from the database using its ID.
- * Validate the ID and apply access/privacy rules on the server.
- */
 $listingUrl = 'near-me-details.php?id=' . (int)$listing['id'];
 $nearMeUrl = 'near-me.php';
-
-$mapQuery = $listing['latitude'] !== null && $listing['longitude'] !== null
-    ? $listing['latitude'] . ',' . $listing['longitude']
-    : $listing['address'];
-
-$mapUrl = 'https://www.google.com/maps/search/?api=1&query='
-    . rawurlencode($mapQuery);
-
-$directionsUrl = 'https://www.google.com/maps/dir/?api=1&destination='
-    . rawurlencode($mapQuery);
-
+$mapQuery = $listing['latitude'] !== null && $listing['longitude'] !== null ? $listing['latitude'] . ',' . $listing['longitude'] : $listing['address'];
+$mapUrl = 'https://www.google.com/maps/search/?api=1&query=' . rawurlencode($mapQuery);
+$directionsUrl = 'https://www.google.com/maps/dir/?api=1&destination=' . rawurlencode($mapQuery);
 $websiteUrl = '';
 if (hasValue($listing['website'])) {
     $candidateUrl = filter_var($listing['website'], FILTER_VALIDATE_URL);
     $scheme = $candidateUrl ? strtolower((string)parse_url($candidateUrl, PHP_URL_SCHEME)) : '';
-
-    if ($candidateUrl && in_array($scheme, ['http', 'https'], true)) {
-        $websiteUrl = $candidateUrl;
-    }
+    if ($candidateUrl && in_array($scheme, ['http', 'https'], true)) $websiteUrl = $candidateUrl;
 }
-
-/* Replace with the authenticated user's actual saved-listing records. */
-$isSaved = false;
+$isSaved = !empty($nd['saved']);
 ?>
 
 

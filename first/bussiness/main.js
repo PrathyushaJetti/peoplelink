@@ -692,6 +692,22 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Demo-only saved state. Replace with a logged-in user's server-side save endpoint.
     document.querySelectorAll('.pl-directory-save').forEach(function (button) {
+        // live profiles: saved in the member's account (directory_save toggles)
+        if (button.dataset.live === '1') {
+            const paint = function (on) {
+                button.classList.toggle('is-saved', on); button.setAttribute('aria-pressed', on ? 'true' : 'false');
+                button.innerHTML = on ? '<i class="bi bi-bookmark-check-fill" aria-hidden="true"></i><span>Saved</span>' : '<i class="bi bi-bookmark" aria-hidden="true"></i><span>Save</span>';
+            };
+            paint(button.dataset.saved === '1');
+            button.addEventListener('click', async function (e) {
+                e.preventDefault(); e.stopImmediatePropagation();
+                if (!window.PL || !PL.requireLogin()) return;
+                button.disabled = true;
+                try { const r = await PL.post('directory_save', { id: button.dataset.saveId }); if (r.ok) { paint(!!r.saved); PL.toast(r.saved ? 'Saved.' : 'Removed from saved.'); } else PL.toast(r.error || 'Could not save.', true); }
+                catch (err) {} finally { button.disabled = false; }
+            }, true);
+            return;
+        }
         const storageKey = 'peoplelink-saved-directory-listings';
         const id = button.dataset.saveId;
         let saved = [];
@@ -1169,10 +1185,20 @@ document.addEventListener('DOMContentLoaded', function () {
         event.preventDefault();
         if (!validateForm()) return;
         closePreview();
-        showFeedback(
-            'Listing Submitted Successfully',
-            'Demo mode: your listing has not been sent to the server. Connect this form to your PeopleLink backend to submit it for review.'
-        );
+        // Real submission through the directory backend (same as the app); goes to admin approval
+        const fd = new FormData(form);
+        fd.append('csrf', (window.PL_WEB || {}).csrf || '');
+        if (window.DS_EDIT_ID) fd.append('edit_id', window.DS_EDIT_ID);
+        fetch(window.location.pathname + (window.DS_EDIT_ID ? '?edit=' + window.DS_EDIT_ID : ''), { method: 'POST', body: fd, credentials: 'same-origin' })
+            .then(function (res) { return res.json(); })
+            .then(function (r) {
+                if (!r.ok) { showFeedback('Could not submit', r.error || 'Please check the form and try again.'); return; }
+                try { localStorage.removeItem('peoplelink-listing-draft'); } catch (e) {}
+                showFeedback(window.DS_EDIT_ID ? 'Profile Updated' : 'Profile Submitted Successfully',
+                    (r.message || 'Saved.') + (r.upload_error ? ' Some images were not uploaded: ' + r.upload_error : '') + ' You can manage it from My Directory Profiles.');
+                setTimeout(function () { window.location.href = 'my-directory-listings.php'; }, 2500);
+            })
+            .catch(function () { showFeedback('Could not submit', 'Could not reach the server. Please try again.'); });
     });
 
     document.getElementById('plPreviewSubmit').addEventListener('click', function () {
@@ -1180,9 +1206,9 @@ document.addEventListener('DOMContentLoaded', function () {
         form.requestSubmit();
     });
 
-    // Restore a locally saved draft, excluding file inputs for security/browser reasons.
+    // Restore: server values (edit mode / account) first, otherwise a locally saved draft (file inputs excluded).
     try {
-        const savedDraft = JSON.parse(localStorage.getItem('peoplelink-listing-draft') || 'null');
+        const savedDraft = (window.DS_FILL && Object.keys(window.DS_FILL).length) ? window.DS_FILL : JSON.parse(localStorage.getItem('peoplelink-listing-draft') || 'null');
         if (savedDraft && typeof savedDraft === 'object') {
             Object.keys(savedDraft).forEach(function (key) {
                 const elements = form.querySelectorAll('[name="' + CSS.escape(key) + '"]');
@@ -1217,12 +1243,12 @@ document.addEventListener('DOMContentLoaded', function () {
   "use strict";
   const STORAGE_KEY = "peoplelinkSavedProfessionalBusinessListings";
   const initialListings = [
-    {id:101,type:"professional",name:"Dr. Ananya Sharma",category:"Healthcare & Wellness",service:"Dentist · Cosmetic Dentistry",location:"Rishikesh, Uttarakhand",description:"Patient-focused dental care with a special interest in preventive and cosmetic treatments.",image:"https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&w=240&q=80",savedAt:"2026-10-12T10:35:00",status:"active",profile:"professional-and-business-profile-details.html"},
-    {id:102,type:"business",name:"Himalayan Digital Studio",category:"IT & Digital Services",service:"Web Design · SEO · Branding",location:"Dehradun, Uttarakhand",description:"Digital solutions for growing businesses, including websites, search visibility and brand identity.",image:"https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=240&q=80",savedAt:"2026-10-11T15:20:00",status:"active",profile:"professional-and-business-profile-details.html"},
-    {id:103,type:"professional",name:"Rahul Verma",category:"Legal & Consulting",service:"Business Consulting",location:"Haridwar, Uttarakhand",description:"Supports small businesses with planning, documentation and practical operational guidance.",image:"/peoplelink/first/images/in/man-1.jpg?auto=format&fit=crop&w=240&q=80",savedAt:"2026-10-10T11:10:00",status:"active",profile:"professional-and-business-profile-details.html"},
-    {id:104,type:"business",name:"Green Leaf Interiors",category:"Home & Lifestyle",service:"Residential · Office Interiors",location:"Rishikesh, Uttarakhand",description:"Thoughtful interior planning, space styling and furnishing solutions for homes and offices.",image:"https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=240&q=80",savedAt:"2026-10-09T09:15:00",status:"unavailable",profile:"professional-and-business-profile-details.html"},
-    {id:105,type:"professional",name:"Meera Joshi",category:"Education & Training",service:"Career Coaching · Interview Prep",location:"Online · India",description:"Career guidance and interview preparation for students and professionals planning their next step.",image:"/peoplelink/first/images/in/woman-2.jpg?auto=format&fit=crop&w=240&q=80",savedAt:"2026-10-08T17:45:00",status:"active",profile:"professional-and-business-profile-details.html"},
-    {id:106,type:"business",name:"North Valley Event Co.",category:"Events & Hospitality",service:"Community Events · Corporate Events",location:"Dehradun, Uttarakhand",description:"Event planning and coordination for community gatherings, celebrations and professional meetups.",image:"https://images.unsplash.com/photo-1511795409834-ef04bbd61622?auto=format&fit=crop&w=240&q=80",savedAt:"2026-10-07T13:05:00",status:"active",profile:"professional-and-business-profile-details.html"}
+    {id:101,type:"professional",name:"Dr. Ananya Sharma",category:"Healthcare & Wellness",service:"Dentist · Cosmetic Dentistry",location:"Rishikesh, Uttarakhand",description:"Patient-focused dental care with a special interest in preventive and cosmetic treatments.",image:"https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&w=240&q=80",savedAt:"2026-10-12T10:35:00",status:"active",profile:"professional-business-profile-details.php"},
+    {id:102,type:"business",name:"Himalayan Digital Studio",category:"IT & Digital Services",service:"Web Design · SEO · Branding",location:"Dehradun, Uttarakhand",description:"Digital solutions for growing businesses, including websites, search visibility and brand identity.",image:"https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=240&q=80",savedAt:"2026-10-11T15:20:00",status:"active",profile:"professional-business-profile-details.php"},
+    {id:103,type:"professional",name:"Rahul Verma",category:"Legal & Consulting",service:"Business Consulting",location:"Haridwar, Uttarakhand",description:"Supports small businesses with planning, documentation and practical operational guidance.",image:"/peoplelink/first/images/in/man-1.jpg?auto=format&fit=crop&w=240&q=80",savedAt:"2026-10-10T11:10:00",status:"active",profile:"professional-business-profile-details.php"},
+    {id:104,type:"business",name:"Green Leaf Interiors",category:"Home & Lifestyle",service:"Residential · Office Interiors",location:"Rishikesh, Uttarakhand",description:"Thoughtful interior planning, space styling and furnishing solutions for homes and offices.",image:"https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=240&q=80",savedAt:"2026-10-09T09:15:00",status:"unavailable",profile:"professional-business-profile-details.php"},
+    {id:105,type:"professional",name:"Meera Joshi",category:"Education & Training",service:"Career Coaching · Interview Prep",location:"Online · India",description:"Career guidance and interview preparation for students and professionals planning their next step.",image:"/peoplelink/first/images/in/woman-2.jpg?auto=format&fit=crop&w=240&q=80",savedAt:"2026-10-08T17:45:00",status:"active",profile:"professional-business-profile-details.php"},
+    {id:106,type:"business",name:"North Valley Event Co.",category:"Events & Hospitality",service:"Community Events · Corporate Events",location:"Dehradun, Uttarakhand",description:"Event planning and coordination for community gatherings, celebrations and professional meetups.",image:"https://images.unsplash.com/photo-1511795409834-ef04bbd61622?auto=format&fit=crop&w=240&q=80",savedAt:"2026-10-07T13:05:00",status:"active",profile:"professional-business-profile-details.php"}
   ];
   const $ = (selector, root=document) => root.querySelector(selector);
   const $$ = (selector, root=document) => [...root.querySelectorAll(selector)];
@@ -1233,13 +1259,14 @@ document.addEventListener('DOMContentLoaded', function () {
   let toastTimer = null;
 
   function loadSaved(){
+    if (Array.isArray(window.SAVED_DIR)) return window.SAVED_DIR.map(item => ({...item})); // live: the member's saved profiles
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if(raw !== null) return JSON.parse(raw);
     } catch(e) {}
     return initialListings.map(item => ({...item}));
   }
-  function persist(){ try { localStorage.setItem(STORAGE_KEY, JSON.stringify(saved)); } catch(e) {} }
+  function persist(){ if (Array.isArray(window.SAVED_DIR)) return; try { localStorage.setItem(STORAGE_KEY, JSON.stringify(saved)); } catch(e) {} }
   function escapeHTML(value=""){
     return String(value).replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
   }
@@ -1317,7 +1344,13 @@ document.addEventListener('DOMContentLoaded', function () {
   }
   function removeListing(id){
     const item=saved.find(x=>String(x.id)===String(id)); if(!item) return;
-    saved=saved.filter(x=>String(x.id)!==String(id)); persist(); fillFilters(); render(); toast(`${item.name} removed from saved listings.`);
+    const done = () => { saved=saved.filter(x=>String(x.id)!==String(id)); persist(); fillFilters(); render(); toast(`${item.name} removed from saved listings.`); };
+    if (!Array.isArray(window.SAVED_DIR) || !window.PL) { done(); return; }
+    PL.post("directory_save", { id: id }).then(r => {
+      if (r.ok && r.saved) return PL.post("directory_save", { id: id }).then(() => toast("Could not remove. Please try again."));
+      if (!r.ok) { toast(r.error || "Could not remove."); return; }
+      done();
+    }).catch(() => {});
   }
   function openContact(id){
     const item=saved.find(x=>String(x.id)===String(id)); if(!item || item.status!=="active") return;
@@ -1351,6 +1384,11 @@ document.addEventListener('DOMContentLoaded', function () {
   $("#contactForm").addEventListener("submit",event=>{
     event.preventDefault();
     if(!activeContactListing)return;
+    if (Array.isArray(window.SAVED_DIR) && window.PL) {
+      const f=$("#contactForm"); const data={id:activeContactListing.id}; new FormData(f).forEach((v,k)=>{data[k]=v;});
+      PL.post("directory_enquiry", data).then(r=>{ toast(r.ok ? `Enquiry sent to ${activeContactListing.name}.` : (r.error || "Could not send.")); if(r.ok){ f.reset(); closeModal(); } }).catch(()=>{});
+      return;
+    }
     toast(`Enquiry prepared for ${activeContactListing.name}. Connect a backend to send it.`);
     $("#contactForm").reset();closeModal();
   });
@@ -1379,7 +1417,7 @@ document.addEventListener('DOMContentLoaded', function () {
     phone: "919876543210",
     email: "hello@example.com"
   };
-  const listing = {
+  const listing = window.EQ_LISTING || {
     ...defaultListing,
     name: params.get("name") || defaultListing.name,
     type: params.get("type") === "business" ? "business" : defaultListing.type,
@@ -1390,7 +1428,7 @@ document.addEventListener('DOMContentLoaded', function () {
     direct: params.get("direct") !== "0",
     phone: params.get("phone") || defaultListing.phone,
     email: params.get("email") || defaultListing.email,
-    profile: params.get("profile") || "professional-and-business-profile-details.html"
+    profile: params.get("profile") || "professional-business-profile-details.php"
   };
   $("#listingName").textContent = listing.name;
   $("#listingKind").textContent = listing.type === "business" ? "BUSINESS" : "PROFESSIONAL";
@@ -1411,7 +1449,7 @@ document.addEventListener('DOMContentLoaded', function () {
   /* Optional logged-in demo autofill. In production, populate these fields server-side
      from the authenticated account, never trust a browser-provided identity for security. */
   try {
-    const account = JSON.parse(localStorage.getItem("peoplelinkDemoAccount") || "null");
+    const account = window.EQ_ACCOUNT || JSON.parse(localStorage.getItem("peoplelinkDemoAccount") || "null");
     if (account) {
       if (account.fullName) $("#fullName").value = account.fullName;
       if (account.mobile) $("#mobile").value = String(account.mobile).replace(/\D/g,"").slice(-10);
@@ -1481,8 +1519,22 @@ document.addEventListener('DOMContentLoaded', function () {
       message:$("#message").value.trim(),
       preferredMethod:preferred
     };
-    /* Demo only: keep the latest submission locally. Production should POST this data
-       to a protected backend with authentication, CSRF protection, validation and rate limits. */
+    if (window.EQ_LISTING && window.PL) {
+      // Real enquiry: saved by the directory backend and the owner is notified (same as the app)
+      const btn = $("#submitEnquiry"); btn.disabled = true;
+      PL.post("directory_enquiry", { id: listing.id, name: enquiry.fullName, phone: enquiry.mobile, email: enquiry.email,
+        message: "Subject: " + enquiry.subject + "\n\n" + enquiry.message + "\n\nPreferred contact: " + preferred })
+        .then(r => {
+          btn.disabled = false;
+          if (!r.ok) { showToast(r.error || "Could not send the enquiry."); return; }
+          $("#confirmationId").textContent = "PL-ENQ-" + String(r.enquiry_id).padStart(6, "0");
+          $("#confirmationDate").textContent = new Date().toLocaleDateString("en-IN",{day:"numeric",month:"long",year:"numeric"});
+          $("#confirmationListing").textContent = listing.name;
+          $("#enquiryPanel").hidden = true; $(".listing-summary").hidden = true; $("#successPanel").hidden = false;
+          window.scrollTo({top:$("#successPanel").getBoundingClientRect().top+window.scrollY-20,behavior:"smooth"});
+        }).catch(() => { btn.disabled = false; });
+      return;
+    }
     try { localStorage.setItem("peoplelinkLastDemoEnquiry",JSON.stringify(enquiry)); } catch(e) {}
     $("#confirmationId").textContent=enquiry.id;
     $("#confirmationDate").textContent=new Date(enquiry.date).toLocaleDateString("en-IN",{day:"numeric",month:"long",year:"numeric"});

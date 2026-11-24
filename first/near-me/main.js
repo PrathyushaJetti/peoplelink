@@ -5875,7 +5875,18 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     saveButtons.forEach(button => {
-        button.addEventListener("click", function () {
+        button.addEventListener("click", async function () {
+            if (window.ND_ID && window.PL) {
+                // live: saved in the member's account (same list as Directory saved profiles)
+                if (!PL.requireLogin()) return;
+                const r = await PL.post("directory_save", { id: window.ND_ID });
+                if (!r.ok) { saveMessage.textContent = r.error || "Could not save."; saveMessage.classList.add("show"); return; }
+                isSaved = !!r.saved;
+                updateSaveButtons();
+                saveMessage.textContent = isSaved ? "Saved to your PeopleLink account." : "Removed from your saved listings.";
+                saveMessage.classList.add("show");
+                return;
+            }
             isSaved = !isSaved;
             updateSaveButtons();
 

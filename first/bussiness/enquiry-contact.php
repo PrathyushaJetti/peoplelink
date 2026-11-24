@@ -1,10 +1,28 @@
-<?php include 'header.php'; ?>
+<?php
+// Directory Enquiry (live: profile from directory_details; enquiry sent with directory_enquiry → owner notified)
+require_once dirname(__DIR__) . '/_web.php';
+web_require_login();
+$eqId = (int)($_GET['id'] ?? 0);
+$eqRes = $eqId ? web_call('directory_details', ['id' => $eqId]) : ['error' => 'missing'];
+if (!empty($eqRes['error'])) { flash('That profile is not available.', 'error'); header('Location: professional-and-business-directory-search-results.php'); exit; }
+$eq = web_dir_card($eqRes['item']);
+if (!empty($eq['is_own'])) { flash('This is your own profile.', 'error'); header('Location: professional-business-profile-details.php?id=' . $eqId); exit; }
+$eqPhone = preg_replace('/\D+/', '', (string)($eq['whatsapp'] ?: $eq['phone'] ?? ''));
+if (strlen($eqPhone) === 10) $eqPhone = '91' . $eqPhone;
+$eqListing = ['id' => $eqId, 'name' => $eq['title'], 'type' => $eq['is_business'] ? 'business' : 'professional', 'category' => $eq['category_name'],
+    'service' => $eq['services_list'][0] ?? $eq['category_text'], 'location' => $eq['location_text'],
+    'image' => $eq['image'] ?: 'https://ui-avatars.com/api/?background=0b4f8c&color=fff&name=' . rawurlencode($eq['initials']),
+    'direct' => $eqPhone !== '' || !empty($eq['email']), 'phone' => $eqPhone, 'email' => (string)($eq['email'] ?? ''),
+    'profile' => 'professional-business-profile-details.php?id=' . $eqId];
+$eqAccount = ['fullName' => $webUser['name'] ?? '', 'mobile' => preg_replace('/\D/', '', (string)($webUser['phone'] ?? '')), 'email' => $webUser['email'] ?? ''];
+include 'header.php'; ?>
+<script>window.EQ_LISTING=<?= json_encode($eqListing, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_SLASHES) ?>;window.EQ_ACCOUNT=<?= json_encode($eqAccount, JSON_HEX_TAG | JSON_HEX_AMP) ?>;</script>
 
   <main class="pl-page">
     <section class="pl-top-banner">
       <div class="banner-orb banner-orb-a"></div><div class="banner-orb banner-orb-b"></div>
       <div class="pl-container banner-inner">
-        <nav class="pl-breadcrumb" aria-label="Breadcrumb"><a href="#"><i class="bi bi-house-door"></i> Home</a><i class="bi bi-chevron-right"></i><a href="professional-and-business-directory-search-results.html">Directory</a><i class="bi bi-chevron-right"></i><span>Contact listing</span></nav>
+        <nav class="pl-breadcrumb" aria-label="Breadcrumb"><a href="#"><i class="bi bi-house-door"></i> Home</a><i class="bi bi-chevron-right"></i><a href="professional-and-business-directory-search-results.php">Directory</a><i class="bi bi-chevron-right"></i><span>Contact listing</span></nav>
         <div class="banner-content">
           <div><span class="pl-eyebrow"><i class="bi bi-chat-square-heart"></i> START A CONVERSATION</span><h1>Connect with the right <span>people.</span></h1><p>Tell the professional or business what you need. A clear enquiry is the first step towards a useful connection.</p></div>
           <div class="banner-art" aria-hidden="true"><div class="art-circle"><i class="bi bi-chat-dots-fill"></i></div><span class="art-bubble bubble-one"><i class="bi bi-check-lg"></i></span><span class="art-bubble bubble-two"><i class="bi bi-send-fill"></i></span><span class="art-line line-one"></span><span class="art-line line-two"></span></div>
@@ -23,7 +41,7 @@
             <div class="summary-location"><i class="bi bi-geo-alt-fill"></i><span id="listingLocation">Rishikesh, Uttarakhand</span></div>
             <div class="summary-divider"></div>
             <div class="summary-help"><span class="help-icon"><i class="bi bi-lightbulb"></i></span><div><strong>Make your enquiry useful</strong><p>Explain what you need, include important details, and mention how you prefer to be contacted.</p></div></div>
-            <a class="back-profile" id="backProfile" href="professional-and-business-profile-details.html"><i class="bi bi-arrow-left"></i> Back to profile</a>
+            <a class="back-profile" id="backProfile" href="professional-business-profile-details.php"><i class="bi bi-arrow-left"></i> Back to profile</a>
           </div>
         </aside>
 
@@ -59,7 +77,7 @@
           <h2>Enquiry Sent <span>Successfully!</span></h2>
           <p>Your enquiry has been recorded in this demo. Keep the details below for your reference.</p>
           <div class="success-details"><div><span>Enquiry ID</span><strong id="confirmationId">PL-ENQ-000001</strong><button id="copyEnquiryId" class="copy-id" type="button" aria-label="Copy enquiry ID"><i class="bi bi-copy"></i></button></div><div><span>Date</span><strong id="confirmationDate">12 October 2026</strong></div><div><span>Professional / Business</span><strong id="confirmationListing">Dr. Ananya Sharma</strong></div></div>
-          <div class="success-actions"><a href="professional-and-business-profile-details.html" class="pl-btn pl-btn-primary" id="successBackProfile"><i class="bi bi-person-vcard"></i> Back to Profile</a><a href="professional-and-business-directory-search-results.html" class="pl-btn pl-btn-secondary"><i class="bi bi-search"></i> Browse More Listings</a></div>
+          <div class="success-actions"><a href="professional-business-profile-details.php" class="pl-btn pl-btn-primary" id="successBackProfile"><i class="bi bi-person-vcard"></i> Back to Profile</a><a href="professional-and-business-directory-search-results.php" class="pl-btn pl-btn-secondary"><i class="bi bi-search"></i> Browse More Listings</a></div>
           <small class="demo-disclaimer"><i class="bi bi-info-circle"></i> Demo confirmation only. Connect the form to your server to create and deliver real enquiries.</small>
         </section>
       </div>
