@@ -1,4 +1,23 @@
-<?php include 'header.php'; ?>
+<?php
+// Contact Seller (live: listing from marketplace_details, enquiry saved with marketplace_enquiry → seller notified)
+require_once dirname(__DIR__) . '/_web.php';
+web_require_login();
+$csId = (int)($_GET['id'] ?? $_POST['listing_id'] ?? 0);
+$csRes = $csId ? web_call('marketplace_details', ['id' => $csId]) : ['error' => 'missing'];
+if (!empty($csRes['error'])) { flash('That listing is not available.', 'error'); header('Location: marketplace-search-results.php'); exit; }
+$cs = web_mp_card($csRes['item']);
+if (!empty($cs['is_own'])) { flash('This is your own listing.', 'error'); header('Location: my-marketplace-listings.php'); exit; }
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $_POST = ['csrf' => $_POST['csrf'] ?? '', 'id' => $csId, 'name' => $_POST['buyer_name'] ?? '', 'phone' => $_POST['buyer_mobile'] ?? '', 'email' => $_POST['buyer_email'] ?? '',
+        'message' => trim('Subject: ' . trim((string)($_POST['subject'] ?? '')) . "\n\n" . trim((string)($_POST['message'] ?? '')) . "\n\nPreferred contact: " . ($_POST['preferred_contact'] ?? 'Call'))];
+    web_post('marketplace_enquiry', 'contact-seller.php?id=' . $csId, 'marketplace-listing-details.php?id=' . $csId);
+}
+$csRow = pl_entity_row(pl_entity('mp_listing'), $csId);
+$csSeller = $cs['contact_name'] ?: (rows('SELECT name FROM users WHERE id=?', [(int)$csRow['user_id']])[0]['name'] ?? 'Seller');
+$csTel = preg_replace('/[^\d+]/', '', (string)($cs['phone'] ?? ''));
+$csWa = preg_replace('/\D+/', '', (string)($cs['whatsapp'] ?? '')); if (strlen($csWa) === 10) $csWa = '91' . $csWa;
+$csMail = (string)($cs['email'] ?? '');
+include 'header.php'; ?>
 
  
 
@@ -34,7 +53,7 @@
 
     <div class="pl-contact-container pl-main-content">
         <nav class="pl-breadcrumb" aria-label="Breadcrumb">
-            <a href="index.php">Home</a><span>/</span><a href="marketplace.php">Marketplace</a><span>/</span><strong>Contact Seller</strong>
+            <a href="index.php">Home</a><span>/</span><a href="marketplace-home.php">Marketplace</a><span>/</span><strong>Contact Seller</strong>
         </nav>
 
         <div class="pl-section-intro">
@@ -53,21 +72,21 @@
                     <div class="pl-card-topline"><span class="pl-card-label">LISTING SUMMARY</span><span class="pl-listing-status"><i></i> Marketplace</span></div>
                     <div class="pl-listing-photo-wrap">
                         <!-- Replace the placeholder image and details with listing data from your existing backend. -->
-                        <img class="pl-listing-image" src="images/marketplace-placeholder.jpg" alt="Marketplace listing">
+                        <img class="pl-listing-image" src="<?= h($cs['image'] ?: 'images/marketplace-placeholder.jpg') ?>" alt="<?= h($cs['title']) ?>">
                         <span class="pl-photo-badge">PeopleLink Listing</span>
                     </div>
                     <div class="pl-listing-details">
-                        <span class="pl-category-chip">Marketplace Category</span>
-                        <h3 class="pl-listing-title">Marketplace Listing Title</h3>
-                        <p class="pl-listing-price">Price on request</p>
+                        <span class="pl-category-chip"><?= h($cs['category_text']) ?></span>
+                        <h3 class="pl-listing-title"><a href="marketplace-listing-details.php?id=<?= $csId ?>"><?= h($cs['title']) ?></a></h3>
+                        <p class="pl-listing-price"><?= h($cs['price_text']) ?></p>
                         <div class="pl-listing-info">
-                            <div class="pl-info-item"><span class="pl-info-icon" aria-hidden="true">⌖</span><div><small>Location</small><strong>Seller location</strong></div></div>
-                            <div class="pl-info-item"><span class="pl-info-icon" aria-hidden="true">♙</span><div><small>Seller</small><strong>Seller Name</strong></div></div>
+                            <div class="pl-info-item"><span class="pl-info-icon" aria-hidden="true">⌖</span><div><small>Location</small><strong><?= h($cs['location_text']) ?></strong></div></div>
+                            <div class="pl-info-item"><span class="pl-info-icon" aria-hidden="true">♙</span><div><small>Seller</small><strong><?= h($csSeller) ?></strong></div></div>
                         </div>
                     </div>
                     <div class="pl-seller-profile">
-                        <div class="pl-seller-avatar">S</div>
-                        <div class="pl-seller-profile-copy"><small>YOU’RE CONTACTING</small><strong>Seller Name</strong><span>Marketplace seller</span></div>
+                        <div class="pl-seller-avatar"><?= h(mb_strtoupper(mb_substr($csSeller, 0, 1))) ?></div>
+                        <div class="pl-seller-profile-copy"><small>YOU’RE CONTACTING</small><strong><?= h($csSeller) ?></strong><span>Marketplace seller</span></div>
                         <span class="pl-seller-arrow" aria-hidden="true">↗</span>
                     </div>
                 </section>
@@ -85,22 +104,23 @@
                     <div><span class="pl-card-label">CONTACT THE SELLER</span><h2>Send an enquiry</h2><p>Fields marked with <b>*</b> are required.</p></div>
                 </div>
 
-                <form class="pl-form-body" action="submit-enquiry.php" method="POST">
-                    <input type="hidden" name="listing_id" value="">
+                <?= web_flash_html() ?>
+<form class="pl-form-body" action="contact-seller.php?id=<?= $csId ?>" method="POST"><?= web_csrf_field() ?>
+                    <input type="hidden" name="listing_id" value="<?= $csId ?>">
 
                     <div class="pl-form-section-heading"><span>01</span><div><h3>Your contact details</h3><p>How the seller can get back to you.</p></div></div>
                     <div class="pl-form-grid">
                         <div class="pl-form-group">
                             <label for="pl-buyer-name">Full name <b>*</b></label>
-                            <input id="pl-buyer-name" type="text" name="buyer_name" placeholder="Enter your full name" autocomplete="name" required>
+                            <input id="pl-buyer-name" type="text" name="buyer_name" value="<?= h($webUser['name'] ?? '') ?>" placeholder="Enter your full name" autocomplete="name" required>
                         </div>
                         <div class="pl-form-group">
                             <label for="pl-buyer-mobile">Mobile number <b>*</b></label>
-                            <input id="pl-buyer-mobile" type="tel" name="buyer_mobile" placeholder="Enter mobile number" autocomplete="tel" required>
+                            <input id="pl-buyer-mobile" type="tel" name="buyer_mobile" value="<?= h($webUser['phone'] ?? '') ?>" placeholder="Enter mobile number" autocomplete="tel" required>
                         </div>
                         <div class="pl-form-group pl-full-width">
                             <label for="pl-buyer-email">Email address <b>*</b></label>
-                            <input id="pl-buyer-email" type="email" name="buyer_email" placeholder="you@example.com" autocomplete="email" required>
+                            <input id="pl-buyer-email" type="email" name="buyer_email" value="<?= h($webUser['email'] ?? '') ?>" placeholder="you@example.com" autocomplete="email" required>
                         </div>
                     </div>
 
@@ -109,7 +129,7 @@
                     <div class="pl-form-section-heading"><span>02</span><div><h3>Your enquiry</h3><p>Give the seller a little context.</p></div></div>
                     <div class="pl-form-group">
                         <label for="pl-subject">Subject <b>*</b></label>
-                        <input id="pl-subject" type="text" name="subject" placeholder="e.g. Interested in this listing" required>
+                        <input id="pl-subject" type="text" name="subject" value="Interested in: <?= h($cs['title']) ?>" placeholder="e.g. Interested in this listing" required>
                     </div>
                     <div class="pl-form-group">
                         <label for="pl-message">Message or requirement <b>*</b></label>
@@ -132,15 +152,15 @@
                 </form>
 
                 <!-- Replace these sample contact details and show this block only if seller settings allow direct contact. -->
-                <div class="pl-direct-contact">
+                <?php if ($csTel || $csWa || $csMail): ?><div class="pl-direct-contact">
                     <div class="pl-direct-heading"><strong>Prefer to contact directly?</strong><span>When available</span></div>
                     <div class="pl-direct-actions">
-                        <a class="pl-direct-btn pl-direct-call" href="tel:+910000000000"><span aria-hidden="true">☎</span> Call seller</a>
-                        <a class="pl-direct-btn pl-direct-whatsapp" target="_blank" rel="noopener" href="https://wa.me/910000000000"><span aria-hidden="true">◉</span> WhatsApp</a>
-                        <a class="pl-direct-btn pl-direct-email" href="mailto:seller@example.com"><span aria-hidden="true">✉</span> Email</a>
+                        <?php if ($csTel): ?><a class="pl-direct-btn pl-direct-call" href="tel:<?= h($csTel) ?>"><span aria-hidden="true">☎</span> Call seller</a><?php endif; ?>
+                        <?php if ($csWa): ?><a class="pl-direct-btn pl-direct-whatsapp" target="_blank" rel="noopener" href="https://wa.me/<?= h($csWa) ?>"><span aria-hidden="true">◉</span> WhatsApp</a><?php endif; ?>
+                        <?php if ($csMail): ?><a class="pl-direct-btn pl-direct-email" href="mailto:<?= h($csMail) ?>"><span aria-hidden="true">✉</span> Email</a><?php endif; ?>
                     </div>
-                    <p class="pl-direct-disclaimer">If direct contact is restricted, hide these buttons and use the enquiry form.</p>
-                </div>
+                    <p class="pl-direct-disclaimer">Shown because the seller shared these contact details.</p>
+                </div><?php endif; ?>
             </section>
         </div>
     </div>

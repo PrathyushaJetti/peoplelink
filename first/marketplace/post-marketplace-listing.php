@@ -1,4 +1,75 @@
-<?php include 'header.php'; ?>
+<?php
+// Post / Edit Marketplace Listing (live: marketplace_create / marketplace_update, photos uploaded to the listing gallery)
+require_once dirname(__DIR__) . '/_web.php';
+web_require_login();
+web_require_community();
+$E = pl_entity('mp_listing');
+$pmEditId = (int)($_GET['edit'] ?? $_POST['edit_id'] ?? 0);
+$pmEdit = $pmEditId ? pl_api_own($E, $pmEditId, $webUid) : null;
+if ($pmEditId && !$pmEdit) { flash('Listing not found.', 'error'); header('Location: my-marketplace-listings.php'); exit; }
+
+/* design names -> marketplace categories in the database */
+function pm_category_id(string $name): int {
+    $alias = ['Furniture' => 'Furniture/Home', 'Products' => 'Other'];
+    $n = $alias[$name] ?? $name;
+    return (int)scalar("SELECT id FROM categories WHERE module='marketplace' AND parent_id IS NULL AND LOWER(name)=LOWER(?) LIMIT 1", [$n]);
+}
+function pm_sub_id(int $parent, string $name): int {
+    if ($name === '' || !$parent) return 0;
+    return (int)scalar("SELECT id FROM categories WHERE module='marketplace' AND parent_id=? AND (LOWER(name)=LOWER(?) OR LOWER(name) LIKE LOWER(?)) LIMIT 1", [$parent, $name, '%' . $name . '%']);
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    header('Content-Type: application/json; charset=utf-8');
+    if (!hash_equals((string)($_SESSION['csrf'] ?? ''), (string)($_POST['csrf'] ?? ''))) { echo json_encode(['ok' => false, 'error' => 'Your session expired. Please refresh the page and try again.']); exit; }
+    $in = $_POST;
+    $catId = pm_category_id((string)($in['category'] ?? ''));
+    if (!$catId) { echo json_encode(['ok' => false, 'error' => 'Please choose a category.']); exit; }
+    $cond = ['Like New' => 'Like new', 'Not Applicable' => 'Not applicable', 'Refurbished' => 'Used'][$in['condition'] ?? ''] ?? ($in['condition'] ?? '');
+    $desc = trim(trim((string)($in['short_description'] ?? '')) . "\n\n" . trim((string)($in['description'] ?? '')));
+    $map = [
+        'category_id' => $catId, 'subcategory_id' => pm_sub_id($catId, (string)($in['subcategory'] ?? '')) ?: '',
+        'title' => $in['title'] ?? '', 'description' => $desc,
+        'listing_type' => ($in['category'] ?? '') === 'Services' ? 'Service' : 'Sell',
+        'price' => preg_replace('/[^\d.]/', '', (string)($in['price'] ?? '')), 'price_negotiable' => ($in['price_type'] ?? '') === 'Negotiable' ? 1 : 0,
+        'item_condition' => in_array($cond, ['New', 'Like new', 'Used', 'Not applicable'], true) ? $cond : '',
+        'location' => $in['locality'] ?? '', 'city' => $in['city'] ?? '',
+        'contact_name' => $in['seller_name'] ?? '', 'phone' => $in['mobile'] ?? '', 'whatsapp' => $in['whatsapp'] ?? '', 'email' => $in['email'] ?? '',
+        'visibility_type' => ($in['visibility'] ?? '') === 'Public' ? 'global' : 'community',
+    ];
+    // everything else in the form (category-specific specs, address, map link, contact methods) is kept as listing details
+    $skip = array_flip(['csrf', 'category', 'subcategory', 'condition', 'price', 'price_type', 'short_description', 'description', 'title', 'locality', 'city', 'seller_name', 'mobile', 'whatsapp', 'email', 'visibility', 'edit_id']);
+    foreach ($in as $k => $v) if (!isset($skip[$k]) && !isset($map[$k]) && (is_array($v) ? $v : trim((string)$v) !== '')) $map[$k] = is_array($v) ? implode(', ', $v) : trim((string)$v);
+    if ($pmEdit) $map['id'] = $pmEditId;
+    $_POST = ['csrf' => $in['csrf']]; // only the mapped fields go to the backend
+    $r = web_call($pmEdit ? 'marketplace_update' : 'marketplace_create', $map + ['csrf' => $_POST['csrf']], true);
+    if (!empty($r['error'])) { echo json_encode(['ok' => false, 'error' => $r['error']]); exit; }
+    $id = (int)($r['id'] ?? $r['item']['id'] ?? $pmEditId);
+    // new photos on edit (create uploads them itself)
+    if ($pmEdit && pl_files_list(pl_api_files($E))) pl_media_add($E, $id, pl_api_files($E), $webUid);
+    echo json_encode(['ok' => true, 'id' => $id, 'message' => $r['message'] ?? 'Saved.', 'upload_error' => $r['upload_error'] ?? null]); exit;
+}
+
+// Edit: values for the form (design field names)
+$pmFill = [];
+if ($pmEdit) {
+    $d = json_decode((string)($pmEdit['details'] ?? ''), true) ?: [];
+    $cat = (string)(rows('SELECT name FROM categories WHERE id=?', [(int)$pmEdit['category_id']])[0]['name'] ?? '');
+    $sub = $pmEdit['subcategory_id'] ? (string)(rows('SELECT name FROM categories WHERE id=?', [(int)$pmEdit['subcategory_id']])[0]['name'] ?? '') : '';
+    $parts = preg_split('/\n\s*\n/', (string)$pmEdit['description'], 2);
+    $pmFill = $d + [
+        'category' => ['Furniture/Home' => 'Furniture'][$cat] ?? $cat, 'subcategory' => $sub, 'title' => $pmEdit['title'],
+        'short_description' => $parts[0] ?? '', 'description' => $parts[1] ?? '',
+        'price' => $pmEdit['price'] !== null ? (string)(int)$pmEdit['price'] : '', 'price_type' => $pmEdit['price_negotiable'] ? 'Negotiable' : 'Fixed',
+        'condition' => ['Like new' => 'Like New', 'Not applicable' => 'Not Applicable'][$pmEdit['item_condition'] ?? ''] ?? ($pmEdit['item_condition'] ?? ''),
+        'locality' => $pmEdit['location'], 'city' => $pmEdit['city'], 'seller_name' => $pmEdit['contact_name'], 'mobile' => $pmEdit['phone'],
+        'whatsapp' => $pmEdit['whatsapp'], 'email' => $pmEdit['email'], 'visibility' => $pmEdit['visibility_type'] === 'global' ? 'Public' : 'Community',
+    ];
+    if (isset($d['contact_methods'])) $pmFill['contact_methods'] = array_map('trim', explode(',', (string)$d['contact_methods']));
+} else {
+    $pmFill = ['seller_name' => $webUser['name'] ?? '', 'mobile' => $webUser['phone'] ?? '', 'email' => $webUser['email'] ?? ''];
+}
+include 'header.php'; ?>
 
 
 
@@ -490,7 +561,7 @@
                             <div class="pl-post-image-upload">
                                 <label for="plPostMainImage" class="pl-post-upload-box pl-post-main-upload">
                                     <input type="file" id="plPostMainImage"
-                                           name="main_image" accept="image/*" required>
+                                           name="main_image" accept="image/*"<?= $pmEdit ? '' : ' required' ?>>
                                     <span class="pl-post-upload-icon">
                                         <i class="fas fa-camera"></i>
                                     </span>
@@ -845,4 +916,5 @@
 </main>
 
 
+<script>window.PM_EDIT_ID=<?= (int)($pmEdit['id'] ?? 0) ?>;window.PM_FILL=<?= json_encode($pmFill, JSON_HEX_TAG | JSON_HEX_AMP) ?>;</script>
 <?php include 'footer.php'; ?>

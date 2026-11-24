@@ -1,4 +1,8 @@
-<?php include 'header.php'; ?>
+<?php
+// Marketplace Home (live: newest approved listings for the viewer's community + global listings)
+require_once dirname(__DIR__) . '/_web.php';
+$mpLatest = array_map('web_mp_card', web_ent_list('mp_listing', ['sort' => 'recent'], 12)['items'] ?? []);
+include 'header.php'; ?>
 
  
 
@@ -200,7 +204,7 @@
 
             <div class="pl-market-toolbar">
                 <span><i class="bi bi-grid-3x3-gap"></i>
-                    <strong id="plMarketResultCount">6</strong> listings
+                    <strong id="plMarketResultCount"><?= count($mpLatest) ?></strong> listings
                 </span>
 
                 <label class="pl-market-sort">
@@ -216,269 +220,28 @@
 
             <div class="pl-market-listing-grid" id="plMarketListingGrid">
 
-                <!-- Listing 1 -->
-                <article class="pl-market-listing-card"
-                         data-name="2 BHK Family Apartment"
-                         data-category="Property"
-                         data-location="Rishikesh Uttarakhand"
-                         data-date="2026-10-12"
-                         data-price="4500000">
-
+                <?php if (!$mpLatest): ?><p class="pl-market-empty" style="grid-column:1/-1;text-align:center;padding:24px">No listings yet. <a href="post-marketplace-listing.php">Be the first to post one</a>.</p><?php endif; ?>
+                <?php foreach ($mpLatest as $m): ?>
+                <article class="pl-market-listing-card" data-name="<?= h($m['title']) ?>" data-category="<?= h($m['category_name']) ?>" data-location="<?= h($m['location_text']) ?>" data-date="<?= h($m['posted']) ?>" data-price="<?= (int)$m['price'] ?>">
                     <div class="pl-market-listing-image">
-                        <img src="images/marketplace/property-1.jpg"
-                             alt="Family apartment for sale" loading="lazy">
-
-                        <span class="pl-market-featured-badge">
-                            <i class="bi bi-star-fill"></i> Featured
-                        </span>
-
-                        <button type="button" class="pl-market-save"
-                                data-save-id="1" aria-pressed="false"
-                                aria-label="Save apartment listing">
-                            <i class="bi bi-heart"></i>
-                        </button>
+                        <?php if ($m['image']): ?><img src="<?= h($m['image']) ?>" alt="<?= h($m['title']) ?>" loading="lazy"><?php else: ?><img src="images/marketplace-placeholder.jpg" alt="" loading="lazy"><?php endif; ?>
+                        <?php if (!empty($m['is_featured'])): ?><span class="pl-market-featured-badge"><i class="bi bi-star-fill"></i> Featured</span><?php endif; ?>
+                        <button type="button" class="pl-market-save" data-live="1" data-save-id="<?= (int)$m['id'] ?>" data-saved="<?= !empty($m['saved']) ? '1' : '0' ?>" aria-pressed="<?= !empty($m['saved']) ? 'true' : 'false' ?>" aria-label="Save <?= h($m['title']) ?>"><i class="bi <?= !empty($m['saved']) ? 'bi-heart-fill' : 'bi-heart' ?>"></i></button>
                     </div>
-
                     <div class="pl-market-listing-body">
-                        <span class="pl-market-listing-category">Property</span>
-                        <h3>2 BHK Family Apartment</h3>
-                        <div class="pl-market-price">₹45,00,000</div>
-
+                        <span class="pl-market-listing-category"><?= h($m['category_text']) ?></span>
+                        <h3><?= h($m['title']) ?></h3>
+                        <div class="pl-market-price"><?= h($m['price_text']) ?><?= !empty($m['price_negotiable']) ? ' <small>(negotiable)</small>' : '' ?></div>
                         <div class="pl-market-listing-meta">
-                            <span><i class="bi bi-geo-alt"></i> Rishikesh, Uttarakhand</span>
-                            <span><i class="bi bi-calendar3"></i> 12 Oct 2026</span>
+                            <span><i class="bi bi-geo-alt"></i> <?= h($m['location_text']) ?></span>
+                            <span><i class="bi bi-calendar3"></i> <?= h(date('d M Y', strtotime($m['created_at']))) ?></span>
                         </div>
-
-                        <p class="pl-market-listing-description">
-                            Spacious family apartment with convenient access to local amenities.
-                        </p>
-
-                        <div class="pl-market-community-label">
-                            <i class="bi bi-people-fill"></i> Community Listing
-                        </div>
-
-                        <a href="marketplace-listing-details.php?id=1"
-                           class="pl-market-view-listing">
-                            View Details <i class="bi bi-arrow-up-right"></i>
-                        </a>
+                        <p class="pl-market-listing-description"><?= h(mb_strimwidth((string)$m['description'], 0, 120, '…')) ?></p>
+                        <div class="pl-market-community-label"><i class="bi <?= ($m['visibility_type'] ?? '') === 'global' ? 'bi-globe2' : 'bi-people-fill' ?>"></i> <?= ($m['visibility_type'] ?? '') === 'global' ? 'Global Listing' : 'Community Listing' ?></div>
+                        <a href="marketplace-listing-details.php?id=<?= (int)$m['id'] ?>" class="pl-market-view-listing">View Details <i class="bi bi-arrow-up-right"></i></a>
                     </div>
                 </article>
-
-                <!-- Listing 2 -->
-                <article class="pl-market-listing-card"
-                         data-name="Well-Maintained Family Car"
-                         data-category="Cars"
-                         data-location="Dehradun Uttarakhand"
-                         data-date="2026-10-11"
-                         data-price="425000">
-
-                    <div class="pl-market-listing-image">
-                        <img src="images/marketplace/car-1.jpg"
-                             alt="Pre-owned family car" loading="lazy">
-
-                        <span class="pl-market-featured-badge">
-                            <i class="bi bi-star-fill"></i> Featured
-                        </span>
-
-                        <button type="button" class="pl-market-save"
-                                data-save-id="2" aria-pressed="false"
-                                aria-label="Save car listing">
-                            <i class="bi bi-heart"></i>
-                        </button>
-                    </div>
-
-                    <div class="pl-market-listing-body">
-                        <span class="pl-market-listing-category">Cars</span>
-                        <h3>Well-Maintained Family Car</h3>
-                        <div class="pl-market-price">₹4,25,000</div>
-
-                        <div class="pl-market-listing-meta">
-                            <span><i class="bi bi-geo-alt"></i> Dehradun, Uttarakhand</span>
-                            <span><i class="bi bi-calendar3"></i> 11 Oct 2026</span>
-                        </div>
-
-                        <p class="pl-market-listing-description">
-                            Pre-owned car available for a direct enquiry and inspection.
-                        </p>
-
-                        <a href="marketplace-listing-details.php?id=2"
-                           class="pl-market-view-listing">
-                            View Details <i class="bi bi-arrow-up-right"></i>
-                        </a>
-                    </div>
-                </article>
-
-                <!-- Listing 3 -->
-                <article class="pl-market-listing-card"
-                         data-name="Office Laptop in Excellent Condition"
-                         data-category="Electronics"
-                         data-location="Haridwar Uttarakhand"
-                         data-date="2026-10-10"
-                         data-price="28000">
-
-                    <div class="pl-market-listing-image">
-                        <img src="images/marketplace/laptop-1.jpg"
-                             alt="Laptop for work and study" loading="lazy">
-
-                        <button type="button" class="pl-market-save"
-                                data-save-id="3" aria-pressed="false"
-                                aria-label="Save laptop listing">
-                            <i class="bi bi-heart"></i>
-                        </button>
-                    </div>
-
-                    <div class="pl-market-listing-body">
-                        <span class="pl-market-listing-category">Electronics</span>
-                        <h3>Office Laptop in Excellent Condition</h3>
-                        <div class="pl-market-price">₹28,000</div>
-
-                        <div class="pl-market-listing-meta">
-                            <span><i class="bi bi-geo-alt"></i> Haridwar, Uttarakhand</span>
-                            <span><i class="bi bi-calendar3"></i> 10 Oct 2026</span>
-                        </div>
-
-                        <p class="pl-market-listing-description">
-                            A laptop suitable for office work, study and everyday use.
-                        </p>
-
-                        <div class="pl-market-community-label">
-                            <i class="bi bi-people-fill"></i> Community Listing
-                        </div>
-
-                        <a href="marketplace-listing-details.php?id=3"
-                           class="pl-market-view-listing">
-                            View Details <i class="bi bi-arrow-up-right"></i>
-                        </a>
-                    </div>
-                </article>
-
-                <!-- Listing 4 -->
-                <article class="pl-market-listing-card"
-                         data-name="Solid Wood Dining Table"
-                         data-category="Furniture"
-                         data-location="Rishikesh Uttarakhand"
-                         data-date="2026-10-09"
-                         data-price="12500">
-
-                    <div class="pl-market-listing-image">
-                        <img src="images/marketplace/furniture-1.jpg"
-                             alt="Wooden dining table" loading="lazy">
-
-                        <button type="button" class="pl-market-save"
-                                data-save-id="4" aria-pressed="false"
-                                aria-label="Save furniture listing">
-                            <i class="bi bi-heart"></i>
-                        </button>
-                    </div>
-
-                    <div class="pl-market-listing-body">
-                        <span class="pl-market-listing-category">Furniture</span>
-                        <h3>Solid Wood Dining Table</h3>
-                        <div class="pl-market-price">₹12,500</div>
-
-                        <div class="pl-market-listing-meta">
-                            <span><i class="bi bi-geo-alt"></i> Rishikesh, Uttarakhand</span>
-                            <span><i class="bi bi-calendar3"></i> 09 Oct 2026</span>
-                        </div>
-
-                        <p class="pl-market-listing-description">
-                            A well-kept dining table for your home.
-                        </p>
-
-                        <a href="marketplace-listing-details.php?id=4"
-                           class="pl-market-view-listing">
-                            View Details <i class="bi bi-arrow-up-right"></i>
-                        </a>
-                    </div>
-                </article>
-
-                <!-- Listing 5 -->
-                <article class="pl-market-listing-card"
-                         data-name="Premium City Commuter Bike"
-                         data-category="Bikes"
-                         data-location="Dehradun Uttarakhand"
-                         data-date="2026-10-08"
-                         data-price="62000">
-
-                    <div class="pl-market-listing-image">
-                        <img src="images/marketplace/bike-1.jpg"
-                             alt="Commuter motorcycle" loading="lazy">
-
-                        <span class="pl-market-featured-badge">
-                            <i class="bi bi-star-fill"></i> Featured
-                        </span>
-
-                        <button type="button" class="pl-market-save"
-                                data-save-id="5" aria-pressed="false"
-                                aria-label="Save bike listing">
-                            <i class="bi bi-heart"></i>
-                        </button>
-                    </div>
-
-                    <div class="pl-market-listing-body">
-                        <span class="pl-market-listing-category">Bikes</span>
-                        <h3>Premium City Commuter Bike</h3>
-                        <div class="pl-market-price">₹62,000</div>
-
-                        <div class="pl-market-listing-meta">
-                            <span><i class="bi bi-geo-alt"></i> Dehradun, Uttarakhand</span>
-                            <span><i class="bi bi-calendar3"></i> 08 Oct 2026</span>
-                        </div>
-
-                        <p class="pl-market-listing-description">
-                            A practical two-wheeler for everyday commuting.
-                        </p>
-
-                        <a href="marketplace-listing-details.php?id=5"
-                           class="pl-market-view-listing">
-                            View Details <i class="bi bi-arrow-up-right"></i>
-                        </a>
-                    </div>
-                </article>
-
-                <!-- Listing 6 -->
-                <article class="pl-market-listing-card"
-                         data-name="Professional Website Development"
-                         data-category="Services"
-                         data-location="Available Online"
-                         data-date="2026-10-07"
-                         data-price="0">
-
-                    <div class="pl-market-listing-image">
-                        <img src="images/marketplace/service-1.jpg"
-                             alt="Website development service" loading="lazy">
-
-                        <button type="button" class="pl-market-save"
-                                data-save-id="6" aria-pressed="false"
-                                aria-label="Save service listing">
-                            <i class="bi bi-heart"></i>
-                        </button>
-                    </div>
-
-                    <div class="pl-market-listing-body">
-                        <span class="pl-market-listing-category">Services</span>
-                        <h3>Professional Website Development</h3>
-                        <div class="pl-market-price">Contact for Price</div>
-
-                        <div class="pl-market-listing-meta">
-                            <span><i class="bi bi-geo-alt"></i> Available Online</span>
-                            <span><i class="bi bi-calendar3"></i> 07 Oct 2026</span>
-                        </div>
-
-                        <p class="pl-market-listing-description">
-                            Website design and development for businesses and professionals.
-                        </p>
-
-                        <div class="pl-market-community-label">
-                            <i class="bi bi-people-fill"></i> Community Listing
-                        </div>
-
-                        <a href="marketplace-listing-details.php?id=6"
-                           class="pl-market-view-listing">
-                            View Details <i class="bi bi-arrow-up-right"></i>
-                        </a>
-                    </div>
-                </article>
+                <?php endforeach; ?>
 
             </div>
 

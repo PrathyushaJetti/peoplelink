@@ -1,3 +1,4 @@
+<?php require_once dirname(__DIR__) . '/_web.php'; ?>
 <?php include 'header.php'; ?>
  
 
@@ -84,17 +85,7 @@
                         <div class="pl-ms-filter-group">
                             <label for="plMsCategory">Category</label>
 
-                            <select id="plMsCategory" name="category">
-                                <option value="">All Categories</option>
-                                <option value="Property">Property</option>
-                                <option value="Cars">Cars</option>
-                                <option value="Bikes">Bikes</option>
-                                <option value="Electronics">Electronics</option>
-                                <option value="Furniture">Furniture</option>
-                                <option value="Products">Products</option>
-                                <option value="Services">Services</option>
-                                <option value="Other">Other</option>
-                            </select>
+                            <select id="plMsCategory" name="category"><option value="">All Categories</option><?php foreach (pl_categories('marketplace') as $c): if ($c['parent_id']) continue; ?><option value="<?= h($c['name']) ?>"<?= ($_GET['category'] ?? '') === $c['name'] ? ' selected' : '' ?>><?= h($c['name']) ?></option><?php endforeach; ?></select>
                         </div>
 
                         <!-- Location -->
@@ -161,13 +152,7 @@
                         <div class="pl-ms-filter-group">
                             <label for="plMsCondition">Listing Condition</label>
 
-                            <select id="plMsCondition" name="condition">
-                                <option value="">All Conditions</option>
-                                <option value="New">New</option>
-                                <option value="Used">Used</option>
-                                <option value="Refurbished">Refurbished</option>
-                                <option value="Not Applicable">Not Applicable</option>
-                            </select>
+                            <select id="plMsCondition" name="condition"><option value="">All Conditions</option><option value="New">New</option><option value="Like new">Like new</option><option value="Used">Used</option><option value="Not applicable">Not applicable</option></select>
 
                             <small class="pl-ms-hint">
                                 Applies where condition is relevant to the listing.

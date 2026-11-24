@@ -91,6 +91,31 @@ function web_job_card(array $j): array {
     ]);
 }
 
+/* Rupees: 4500000 -> ₹45,00,000 (Indian grouping) */
+function web_inr($n): string {
+    if ($n === null || $n === '') return '';
+    $n = (string)(int)round((float)$n); $last3 = substr($n, -3); $rest = substr($n, 0, -3);
+    if ($rest !== '') $rest = preg_replace('/\B(?=(\d{2})+(?!\d))/', ',', $rest) . ',';
+    return '₹' . $rest . $last3;
+}
+
+/* A marketplace listing (pl_ent_out) with the extra fields the marketplace designs use. */
+function web_mp_card(array $m): array {
+    $loc = trim(implode(', ', array_filter([$m['location'] ?? '', $m['city'] ?? '', $m['state'] ?? ''])), ', ');
+    $price = $m['price'] !== null && $m['price'] !== '' ? web_inr($m['price']) . (($m['listing_type'] ?? '') === 'Rent' ? ' / month' : '') : 'Price on request';
+    return array_merge($m, [
+        'price_text' => $price, 'location_text' => $loc !== '' ? $loc : 'Location not specified',
+        'image' => $m['cover'] ?? null, 'posted' => substr((string)($m['created_at'] ?? ''), 0, 10),
+        'category_text' => $m['subcategory_name'] ?? $m['category_name'] ?? '',
+    ]);
+}
+
+/* Up-to-N latest listings of a registry module visible to the viewer (marketplace, directory, events ...). */
+function web_ent_list(string $key, array $filters = [], int $per = 12, int $page = 1): array {
+    global $webCid, $webUid;
+    return pl_ent_list(pl_entity($key), $webCid, $filters, $webUid, $page, $per);
+}
+
 function web_csrf_field(): string { return '<input type="hidden" name="csrf" value="' . h(csrf_token()) . '">'; }
 
 /* Page links that keep the current filters. */

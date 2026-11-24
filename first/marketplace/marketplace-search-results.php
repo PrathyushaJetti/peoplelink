@@ -1,4 +1,24 @@
-<?php include 'header.php'; ?>
+<?php
+// Marketplace Search Results (live: filters from marketplace-search.php applied by the marketplace backend)
+require_once dirname(__DIR__) . '/_web.php';
+$g = fn($k) => trim((string)($_GET[$k] ?? ''));
+$mrQ = trim($g('keyword') . ' ' . $g('listing_name'));
+$mrPosted = ['today' => 1, '3days' => 3, '7days' => 7, '30days' => 30][$g('posted_within')] ?? 0;
+$mrFilters = [
+    'q' => $mrQ, 'category' => $g('category'), 'item_condition' => $g('condition'),
+    'city' => $g('city'), 'location' => $g('area'), 'price_min' => $g('min_price'), 'price_max' => $g('max_price'),
+    'sort' => ['recent' => 'recent', 'price_low' => 'price_asc', 'price_high' => 'price_desc'][$g('sort')] ?? '',
+];
+$E = pl_entity('mp_listing');
+$mrRes = pl_ent_list($E, $webCid, array_filter($mrFilters, fn($v) => $v !== ''), $webUid, 1, 50,
+    $mrPosted ? 't.created_at >= NOW() - INTERVAL ? DAY' : null, $mrPosted ? [$mrPosted] : []);
+$mrItems = array_map('web_mp_card', $mrRes['items']);
+// seller names for the card footers
+$mrSellers = [];
+if ($mrItems) foreach (rows('SELECT id, name FROM users WHERE id IN (' . implode(',', array_map('intval', array_unique(array_column(rows('SELECT user_id FROM mp_listings WHERE id IN (' . implode(',', array_map('intval', array_column($mrItems, 'id'))) . ')'), 'user_id')))) . ')') as $u) $mrSellers[(int)$u['id']] = $u['name'];
+$mrOwner = $mrItems ? array_column(rows('SELECT id, user_id FROM mp_listings WHERE id IN (' . implode(',', array_map('intval', array_column($mrItems, 'id'))) . ')'), 'user_id', 'id') : [];
+$ini = fn($n) => strtoupper(implode('', array_map(fn($w) => mb_substr($w, 0, 1), array_slice(preg_split('/\s+/', trim((string)$n)), 0, 2)))) ?: 'PL';
+include 'header.php'; ?>
 
  
 
@@ -32,7 +52,7 @@
                     <i class="fas fa-search"></i>
                     <div>
                         <span>Search Keyword</span>
-                        <strong id="plMrKeyword">All listings</strong>
+                        <strong id="plMrKeyword"><?= $mrQ !== '' ? h($mrQ) : 'All listings' ?></strong>
                     </div>
                 </div>
 
@@ -40,7 +60,7 @@
                     <i class="fas fa-th-large"></i>
                     <div>
                         <span>Category</span>
-                        <strong id="plMrCategory">All Categories</strong>
+                        <strong id="plMrCategory"><?= h($g('category') ?: 'All Categories') ?></strong>
                     </div>
                 </div>
 
@@ -48,12 +68,12 @@
                     <i class="fas fa-map-marker-alt"></i>
                     <div>
                         <span>Location</span>
-                        <strong id="plMrLocation">All Locations</strong>
+                        <strong id="plMrLocation"><?= h(trim($g('area') . ' ' . $g('city')) ?: 'All Locations') ?></strong>
                     </div>
                 </div>
 
                 <div class="pl-mr-summary-count">
-                    <strong id="plMrCount">8</strong>
+                    <strong id="plMrCount"><?= count($mrItems) ?></strong>
                     <span>Listings Found</span>
                 </div>
             </div>
@@ -158,524 +178,29 @@
             <div class="pl-mr-listings-grid" id="plMrListings">
 
                 <!-- Listing 1 -->
-                <article class="pl-mr-card"
-                         data-category="Electronics"
-                         data-price="18500"
-                         data-date="2026-10-12"
-                         data-title="Samsung Galaxy Smartphone"
-                         data-location="Rishikesh"
-                         data-condition="Used"
-                         data-status="available">
-
+                <?php foreach ($mrItems as $m): $seller = $m['contact_name'] ?: ($mrSellers[(int)($mrOwner[$m['id']] ?? 0)] ?? 'Community Member'); ?>
+                <article class="pl-mr-card" data-category="<?= h($m['category_name']) ?>" data-price="<?= (int)$m['price'] ?>" data-date="<?= h($m['posted']) ?>" data-title="<?= h($m['title']) ?>" data-location="<?= h($m['city'] ?: $m['location_text']) ?>" data-condition="<?= h($m['item_condition']) ?>" data-status="available">
                     <div class="pl-mr-card-image">
-                        <img src="assets/images/marketplace/phone.jpg"
-                             alt="Samsung Galaxy smartphone"
-                             loading="lazy">
-
-                        <span class="pl-mr-status available">Available</span>
-
-                        <button type="button" class="pl-mr-save"
-                                aria-label="Save Samsung Galaxy Smartphone"
-                                aria-pressed="false">
-                            <i class="far fa-heart"></i>
-                        </button>
+                        <img src="<?= h($m['image'] ?: 'images/marketplace-placeholder.jpg') ?>" alt="<?= h($m['title']) ?>" loading="lazy">
+                        <span class="pl-mr-status available"><?= h($m['listing_type'] ?: 'Available') ?></span>
+                        <button type="button" class="pl-mr-save" data-live="1" data-save-id="<?= (int)$m['id'] ?>" data-saved="<?= !empty($m['saved']) ? '1' : '0' ?>" aria-label="Save <?= h($m['title']) ?>" aria-pressed="<?= !empty($m['saved']) ? 'true' : 'false' ?>"><i class="<?= !empty($m['saved']) ? 'fas' : 'far' ?> fa-heart"></i></button>
                     </div>
-
                     <div class="pl-mr-card-body">
-                        <div class="pl-mr-card-meta">
-                            <span class="pl-mr-card-category">Electronics</span>
-                            <span class="pl-mr-condition">Used</span>
-                        </div>
-
-                        <h3>
-                            <a href="marketplace-listing-details.php?id=1">
-                                Samsung Galaxy Smartphone
-                            </a>
-                        </h3>
-
-                        <div class="pl-mr-price">₹18,500</div>
-
-                        <div class="pl-mr-location">
-                            <i class="fas fa-map-marker-alt"></i>
-                            Rishikesh, Uttarakhand
-                        </div>
-
+                        <div class="pl-mr-card-meta"><span class="pl-mr-card-category"><?= h($m['category_text']) ?></span><?php if ($m['item_condition']): ?><span class="pl-mr-condition"><?= h($m['item_condition']) ?></span><?php endif; ?></div>
+                        <h3><a href="marketplace-listing-details.php?id=<?= (int)$m['id'] ?>"><?= h($m['title']) ?></a></h3>
+                        <div class="pl-mr-price"><?= h($m['price_text']) ?></div>
+                        <div class="pl-mr-location"><i class="fas fa-map-marker-alt"></i> <?= h($m['location_text']) ?></div>
                         <div class="pl-mr-card-footer">
-                            <div class="pl-mr-seller">
-                                <span class="pl-mr-avatar">RK</span>
-                                <div>
-                                    <strong>Rahul Kumar</strong>
-                                    <span>Community Member</span>
-                                </div>
-                            </div>
-                            <span class="pl-mr-date">12 Oct 2026</span>
+                            <div class="pl-mr-seller"><span class="pl-mr-avatar"><?= h($ini($seller)) ?></span><div><strong><?= h($seller) ?></strong><span><?= ($m['visibility_type'] ?? '') === 'global' ? 'PeopleLink Member' : h(($m['community_name'] ?? 'Community') . ' Member') ?></span></div></div>
+                            <span class="pl-mr-date"><?= h(date('d M Y', strtotime($m['created_at']))) ?></span>
                         </div>
-
                         <div class="pl-mr-card-actions">
-                            <a href="marketplace-listing-details.php?id=1"
-                               class="pl-mr-view-btn">View Details</a>
-                            <button type="button" class="pl-mr-contact-btn"
-                                    data-contact="Rahul Kumar">
-                                <i class="fas fa-comment-alt"></i> Contact
-                            </button>
+                            <a href="marketplace-listing-details.php?id=<?= (int)$m['id'] ?>" class="pl-mr-view-btn">View Details</a>
+                            <a href="contact-seller.php?id=<?= (int)$m['id'] ?>" class="pl-mr-contact-btn"><i class="fas fa-comment-alt"></i> Contact</a>
                         </div>
                     </div>
                 </article>
-
-                <!-- Listing 2 -->
-                <article class="pl-mr-card"
-                         data-category="Furniture"
-                         data-price="6500"
-                         data-date="2026-10-10"
-                         data-title="Wooden Study Table"
-                         data-location="Haridwar"
-                         data-condition="Used"
-                         data-status="available">
-
-                    <div class="pl-mr-card-image">
-                        <img src="assets/images/marketplace/study-table.jpg"
-                             alt="Wooden study table"
-                             loading="lazy">
-
-                        <span class="pl-mr-status available">Available</span>
-
-                        <button type="button" class="pl-mr-save"
-                                aria-label="Save Wooden Study Table"
-                                aria-pressed="false">
-                            <i class="far fa-heart"></i>
-                        </button>
-                    </div>
-
-                    <div class="pl-mr-card-body">
-                        <div class="pl-mr-card-meta">
-                            <span class="pl-mr-card-category">Furniture</span>
-                            <span class="pl-mr-condition">Used</span>
-                        </div>
-
-                        <h3>
-                            <a href="marketplace-listing-details.php?id=2">
-                                Wooden Study Table
-                            </a>
-                        </h3>
-
-                        <div class="pl-mr-price">₹6,500</div>
-
-                        <div class="pl-mr-location">
-                            <i class="fas fa-map-marker-alt"></i>
-                            Haridwar, Uttarakhand
-                        </div>
-
-                        <div class="pl-mr-card-footer">
-                            <div class="pl-mr-seller">
-                                <span class="pl-mr-avatar">AS</span>
-                                <div>
-                                    <strong>Amit Sharma</strong>
-                                    <span>Community Member</span>
-                                </div>
-                            </div>
-                            <span class="pl-mr-date">10 Oct 2026</span>
-                        </div>
-
-                        <div class="pl-mr-card-actions">
-                            <a href="marketplace-listing-details.php?id=2"
-                               class="pl-mr-view-btn">View Details</a>
-                            <button type="button" class="pl-mr-contact-btn"
-                                    data-contact="Amit Sharma">
-                                <i class="fas fa-comment-alt"></i> Contact
-                            </button>
-                        </div>
-                    </div>
-                </article>
-
-                <!-- Listing 3 -->
-                <article class="pl-mr-card"
-                         data-category="Bikes"
-                         data-price="42000"
-                         data-date="2026-10-08"
-                         data-title="Honda Activa Scooter"
-                         data-location="Dehradun"
-                         data-condition="Used"
-                         data-status="available">
-
-                    <div class="pl-mr-card-image">
-                        <img src="assets/images/marketplace/scooter.jpg"
-                             alt="Honda Activa scooter"
-                             loading="lazy">
-
-                        <span class="pl-mr-status available">Available</span>
-
-                        <button type="button" class="pl-mr-save"
-                                aria-label="Save Honda Activa Scooter"
-                                aria-pressed="false">
-                            <i class="far fa-heart"></i>
-                        </button>
-                    </div>
-
-                    <div class="pl-mr-card-body">
-                        <div class="pl-mr-card-meta">
-                            <span class="pl-mr-card-category">Bikes</span>
-                            <span class="pl-mr-condition">Used</span>
-                        </div>
-
-                        <h3>
-                            <a href="marketplace-listing-details.php?id=3">
-                                Honda Activa Scooter
-                            </a>
-                        </h3>
-
-                        <div class="pl-mr-price">₹42,000</div>
-
-                        <div class="pl-mr-location">
-                            <i class="fas fa-map-marker-alt"></i>
-                            Dehradun, Uttarakhand
-                        </div>
-
-                        <div class="pl-mr-card-footer">
-                            <div class="pl-mr-seller">
-                                <span class="pl-mr-avatar">VP</span>
-                                <div>
-                                    <strong>Vikas Pandey</strong>
-                                    <span>Community Member</span>
-                                </div>
-                            </div>
-                            <span class="pl-mr-date">08 Oct 2026</span>
-                        </div>
-
-                        <div class="pl-mr-card-actions">
-                            <a href="marketplace-listing-details.php?id=3"
-                               class="pl-mr-view-btn">View Details</a>
-                            <button type="button" class="pl-mr-contact-btn"
-                                    data-contact="Vikas Pandey">
-                                <i class="fas fa-comment-alt"></i> Contact
-                            </button>
-                        </div>
-                    </div>
-                </article>
-
-                <!-- Listing 4 -->
-                <article class="pl-mr-card"
-                         data-category="Property"
-                         data-price="850000"
-                         data-date="2026-10-06"
-                         data-title="Residential Plot for Sale"
-                         data-location="Rishikesh"
-                         data-condition="New"
-                         data-status="available">
-
-                    <div class="pl-mr-card-image">
-                        <img src="assets/images/marketplace/plot.jpg"
-                             alt="Residential plot for sale"
-                             loading="lazy">
-
-                        <span class="pl-mr-status available">Available</span>
-
-                        <button type="button" class="pl-mr-save"
-                                aria-label="Save Residential Plot"
-                                aria-pressed="false">
-                            <i class="far fa-heart"></i>
-                        </button>
-                    </div>
-
-                    <div class="pl-mr-card-body">
-                        <div class="pl-mr-card-meta">
-                            <span class="pl-mr-card-category">Property</span>
-                            <span class="pl-mr-condition">New</span>
-                        </div>
-
-                        <h3>
-                            <a href="marketplace-listing-details.php?id=4">
-                                Residential Plot for Sale
-                            </a>
-                        </h3>
-
-                        <div class="pl-mr-price">₹8,50,000</div>
-
-                        <div class="pl-mr-location">
-                            <i class="fas fa-map-marker-alt"></i>
-                            Rishikesh, Uttarakhand
-                        </div>
-
-                        <div class="pl-mr-card-footer">
-                            <div class="pl-mr-seller">
-                                <span class="pl-mr-avatar">MS</span>
-                                <div>
-                                    <strong>Manoj Singh</strong>
-                                    <span>Community Member</span>
-                                </div>
-                            </div>
-                            <span class="pl-mr-date">06 Oct 2026</span>
-                        </div>
-
-                        <div class="pl-mr-card-actions">
-                            <a href="marketplace-listing-details.php?id=4"
-                               class="pl-mr-view-btn">View Details</a>
-                            <button type="button" class="pl-mr-contact-btn"
-                                    data-contact="Manoj Singh">
-                                <i class="fas fa-comment-alt"></i> Contact
-                            </button>
-                        </div>
-                    </div>
-                </article>
-
-                <!-- Listing 5 -->
-                <article class="pl-mr-card"
-                         data-category="Cars"
-                         data-price="325000"
-                         data-date="2026-10-04"
-                         data-title="Maruti Suzuki Swift"
-                         data-location="Dehradun"
-                         data-condition="Used"
-                         data-status="sold">
-
-                    <div class="pl-mr-card-image">
-                        <img src="assets/images/marketplace/car.jpg"
-                             alt="Maruti Suzuki Swift car"
-                             loading="lazy">
-
-                        <span class="pl-mr-status closed">Sold</span>
-
-                        <button type="button" class="pl-mr-save"
-                                aria-label="Save Maruti Suzuki Swift"
-                                aria-pressed="false">
-                            <i class="far fa-heart"></i>
-                        </button>
-                    </div>
-
-                    <div class="pl-mr-card-body">
-                        <div class="pl-mr-card-meta">
-                            <span class="pl-mr-card-category">Cars</span>
-                            <span class="pl-mr-condition">Used</span>
-                        </div>
-
-                        <h3>
-                            <a href="marketplace-listing-details.php?id=5">
-                                Maruti Suzuki Swift
-                            </a>
-                        </h3>
-
-                        <div class="pl-mr-price">₹3,25,000</div>
-
-                        <div class="pl-mr-location">
-                            <i class="fas fa-map-marker-alt"></i>
-                            Dehradun, Uttarakhand
-                        </div>
-
-                        <div class="pl-mr-card-footer">
-                            <div class="pl-mr-seller">
-                                <span class="pl-mr-avatar">NS</span>
-                                <div>
-                                    <strong>Neeraj Singh</strong>
-                                    <span>Community Member</span>
-                                </div>
-                            </div>
-                            <span class="pl-mr-date">04 Oct 2026</span>
-                        </div>
-
-                        <div class="pl-mr-card-actions">
-                            <a href="marketplace-listing-details.php?id=5"
-                               class="pl-mr-view-btn">View Details</a>
-                            <button type="button" class="pl-mr-contact-btn"
-                                    data-contact="Neeraj Singh">
-                                <i class="fas fa-comment-alt"></i> Contact
-                            </button>
-                        </div>
-                    </div>
-                </article>
-
-                <!-- Listing 6 -->
-                <article class="pl-mr-card"
-                         data-category="Services"
-                         data-price="1200"
-                         data-date="2026-10-02"
-                         data-title="Home Painting Service"
-                         data-location="Haridwar"
-                         data-condition="New"
-                         data-status="available">
-
-                    <div class="pl-mr-card-image">
-                        <img src="assets/images/marketplace/painting-service.jpg"
-                             alt="Home painting service"
-                             loading="lazy">
-
-                        <span class="pl-mr-status available">Available</span>
-
-                        <button type="button" class="pl-mr-save"
-                                aria-label="Save Home Painting Service"
-                                aria-pressed="false">
-                            <i class="far fa-heart"></i>
-                        </button>
-                    </div>
-
-                    <div class="pl-mr-card-body">
-                        <div class="pl-mr-card-meta">
-                            <span class="pl-mr-card-category">Services</span>
-                            <span class="pl-mr-condition">Service</span>
-                        </div>
-
-                        <h3>
-                            <a href="marketplace-listing-details.php?id=6">
-                                Home Painting Service
-                            </a>
-                        </h3>
-
-                        <div class="pl-mr-price">Starting ₹1,200</div>
-
-                        <div class="pl-mr-location">
-                            <i class="fas fa-map-marker-alt"></i>
-                            Haridwar, Uttarakhand
-                        </div>
-
-                        <div class="pl-mr-card-footer">
-                            <div class="pl-mr-seller">
-                                <span class="pl-mr-avatar">AK</span>
-                                <div>
-                                    <strong>Ajay Kumar</strong>
-                                    <span>Local Service Provider</span>
-                                </div>
-                            </div>
-                            <span class="pl-mr-date">02 Oct 2026</span>
-                        </div>
-
-                        <div class="pl-mr-card-actions">
-                            <a href="marketplace-listing-details.php?id=6"
-                               class="pl-mr-view-btn">View Details</a>
-                            <button type="button" class="pl-mr-contact-btn"
-                                    data-contact="Ajay Kumar">
-                                <i class="fas fa-comment-alt"></i> Contact
-                            </button>
-                        </div>
-                    </div>
-                </article>
-
-                <!-- Listing 7 -->
-                <article class="pl-mr-card"
-                         data-category="Products"
-                         data-price="950"
-                         data-date="2026-09-30"
-                         data-title="Handmade Gift Hamper"
-                         data-location="Rishikesh"
-                         data-condition="New"
-                         data-status="available">
-
-                    <div class="pl-mr-card-image">
-                        <img src="assets/images/marketplace/gift-hamper.jpg"
-                             alt="Handmade gift hamper"
-                             loading="lazy">
-
-                        <span class="pl-mr-status available">Available</span>
-
-                        <button type="button" class="pl-mr-save"
-                                aria-label="Save Handmade Gift Hamper"
-                                aria-pressed="false">
-                            <i class="far fa-heart"></i>
-                        </button>
-                    </div>
-
-                    <div class="pl-mr-card-body">
-                        <div class="pl-mr-card-meta">
-                            <span class="pl-mr-card-category">Products</span>
-                            <span class="pl-mr-condition">New</span>
-                        </div>
-
-                        <h3>
-                            <a href="marketplace-listing-details.php?id=7">
-                                Handmade Gift Hamper
-                            </a>
-                        </h3>
-
-                        <div class="pl-mr-price">₹950</div>
-
-                        <div class="pl-mr-location">
-                            <i class="fas fa-map-marker-alt"></i>
-                            Rishikesh, Uttarakhand
-                        </div>
-
-                        <div class="pl-mr-card-footer">
-                            <div class="pl-mr-seller">
-                                <span class="pl-mr-avatar">PD</span>
-                                <div>
-                                    <strong>Priya Devi</strong>
-                                    <span>Community Member</span>
-                                </div>
-                            </div>
-                            <span class="pl-mr-date">30 Sep 2026</span>
-                        </div>
-
-                        <div class="pl-mr-card-actions">
-                            <a href="marketplace-listing-details.php?id=7"
-                               class="pl-mr-view-btn">View Details</a>
-                            <button type="button" class="pl-mr-contact-btn"
-                                    data-contact="Priya Devi">
-                                <i class="fas fa-comment-alt"></i> Contact
-                            </button>
-                        </div>
-                    </div>
-                </article>
-
-                <!-- Listing 8 -->
-                <article class="pl-mr-card"
-                         data-category="Other"
-                         data-price="1500"
-                         data-date="2026-09-28"
-                         data-title="Musical Keyboard"
-                         data-location="Haridwar"
-                         data-condition="Used"
-                         data-status="available">
-
-                    <div class="pl-mr-card-image">
-                        <img src="assets/images/marketplace/keyboard.jpg"
-                             alt="Musical keyboard"
-                             loading="lazy">
-
-                        <span class="pl-mr-status available">Available</span>
-
-                        <button type="button" class="pl-mr-save"
-                                aria-label="Save Musical Keyboard"
-                                aria-pressed="false">
-                            <i class="far fa-heart"></i>
-                        </button>
-                    </div>
-
-                    <div class="pl-mr-card-body">
-                        <div class="pl-mr-card-meta">
-                            <span class="pl-mr-card-category">Other</span>
-                            <span class="pl-mr-condition">Used</span>
-                        </div>
-
-                        <h3>
-                            <a href="marketplace-listing-details.php?id=8">
-                                Musical Keyboard
-                            </a>
-                        </h3>
-
-                        <div class="pl-mr-price">₹1,500</div>
-
-                        <div class="pl-mr-location">
-                            <i class="fas fa-map-marker-alt"></i>
-                            Haridwar, Uttarakhand
-                        </div>
-
-                        <div class="pl-mr-card-footer">
-                            <div class="pl-mr-seller">
-                                <span class="pl-mr-avatar">SK</span>
-                                <div>
-                                    <strong>Sandeep Kumar</strong>
-                                    <span>Community Member</span>
-                                </div>
-                            </div>
-                            <span class="pl-mr-date">28 Sep 2026</span>
-                        </div>
-
-                        <div class="pl-mr-card-actions">
-                            <a href="marketplace-listing-details.php?id=8"
-                               class="pl-mr-view-btn">View Details</a>
-                            <button type="button" class="pl-mr-contact-btn"
-                                    data-contact="Sandeep Kumar">
-                                <i class="fas fa-comment-alt"></i> Contact
-                            </button>
-                        </div>
-                    </div>
-                </article>
+                <?php endforeach; ?>
 
             </div>
 

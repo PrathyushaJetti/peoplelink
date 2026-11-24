@@ -1,4 +1,25 @@
-<?php include 'header.php'; ?>
+<?php
+// My Marketplace Listings (live: marketplace_my / marketplace_close / marketplace_delete / marketplace_enquiries)
+require_once dirname(__DIR__) . '/_web.php';
+web_require_login();
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $do = ['close' => 'marketplace_close', 'sold' => 'marketplace_close', 'delete' => 'marketplace_delete'][$_POST['do'] ?? ''] ?? null;
+    if ($do) web_post($do, 'my-marketplace-listings.php');
+}
+$_REQUEST['per'] = 50; $_REQUEST['page'] = 1;
+$mmItems = array_map('web_mp_card', web_call('marketplace_my', ['per' => 50])['items'] ?? []);
+$mmIds = array_map('intval', array_column($mmItems, 'id'));
+$mmRows = $mmIds ? array_column(rows('SELECT id, status, views FROM mp_listings WHERE id IN (' . implode(',', $mmIds) . ')'), null, 'id') : [];
+$mmEnq = $mmIds ? array_column(rows("SELECT entity_id, COUNT(*) n FROM enquiries WHERE entity='mp_listings' AND entity_id IN (" . implode(',', $mmIds) . ') GROUP BY entity_id'), 'n', 'entity_id') : [];
+$mmSav = $mmIds ? array_column(rows("SELECT entity_id, COUNT(*) n FROM favourites WHERE entity='mp_listings' AND entity_id IN (" . implode(',', $mmIds) . ') GROUP BY entity_id'), 'n', 'entity_id') : [];
+$mmEnquiries = web_call('marketplace_enquiries')['enquiries'] ?? [];
+function mm_status(array $m, array $row): array {
+    $s = $row['status'] ?? 'pending';
+    if ($s === 'approved' && !empty($m['expired'])) return ['closed', 'Expired'];
+    return [['approved' => 'active', 'pending' => 'pending', 'rejected' => 'rejected', 'closed' => 'closed'][$s] ?? 'draft',
+            ['approved' => 'Active', 'pending' => 'Pending Approval', 'rejected' => 'Rejected', 'closed' => 'Closed'][$s] ?? ucfirst($s)];
+}
+include 'header.php'; ?>
 
  
 
@@ -30,7 +51,7 @@
                 </div>
                 <div>
                     <span>Total Views</span>
-                    <strong id="plMmViews">1,248</strong>
+                    <strong id="plMmViews"><?= number_format(array_sum(array_map(fn($r) => (int)$r['views'], $mmRows))) ?></strong>
                     <small>Across your listings</small>
                 </div>
             </article>
@@ -41,7 +62,7 @@
                 </div>
                 <div>
                     <span>Enquiries Received</span>
-                    <strong id="plMmEnquiries">36</strong>
+                    <strong id="plMmEnquiries"><?= array_sum($mmEnq) ?></strong>
                     <small>People interested in your listings</small>
                 </div>
             </article>
@@ -52,7 +73,7 @@
                 </div>
                 <div>
                     <span>Saved by Users</span>
-                    <strong id="plMmSaved">84</strong>
+                    <strong id="plMmSaved"><?= array_sum($mmSav) ?></strong>
                     <small>Total favourites</small>
                 </div>
             </article>
@@ -63,7 +84,7 @@
                 </div>
                 <div>
                     <span>Total Listings</span>
-                    <strong id="plMmTotal">6</strong>
+                    <strong id="plMmTotal"><?= count($mmItems) ?></strong>
                     <small>All listing statuses</small>
                 </div>
             </article>
@@ -78,7 +99,7 @@
                     <h2>Manage Your Listings</h2>
                     <p>Review and update your marketplace posts.</p>
                 </div>
-                <span class="pl-mm-total-badge" id="plMmResultCount">6 listings</span>
+                <span class="pl-mm-total-badge" id="plMmResultCount"><?= count($mmItems) ?> listings</span>
             </div>
 
             <!-- Status Tabs -->
@@ -158,337 +179,26 @@
             <div class="pl-mm-listings" id="plMmListings">
 
                 <!-- Listing 1 -->
-                <article class="pl-mm-listing"
-                         data-id="101"
-                         data-category="Cars"
-                         data-status="active"
-                         data-title="Hyundai Creta SX Diesel"
-                         data-price="1250000"
-                         data-views="542"
-                         data-enquiries="18"
-                         data-saved="32"
-                         data-location="Dehradun, Uttarakhand"
-                         data-date="10 October 2026"
-                         data-image="https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=800&q=85">
-
-                    <div class="pl-mm-listing-image">
-                        <img src="https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=800&q=85"
-                             alt="Car for sale" loading="lazy">
-                        <span class="pl-mm-status status-active">Active</span>
-                    </div>
-
+                <?php foreach ($mmItems as $m): $row = $mmRows[$m['id']] ?? []; [$sk, $sl] = mm_status($m, $row); ?>
+                <article class="pl-mm-listing" data-id="<?= (int)$m['id'] ?>" data-category="<?= h($m['category_name']) ?>" data-status="<?= $sk ?>" data-title="<?= h($m['title']) ?>" data-price="<?= (int)$m['price'] ?>" data-views="<?= (int)($row['views'] ?? 0) ?>" data-enquiries="<?= (int)($mmEnq[$m['id']] ?? 0) ?>" data-saved="<?= (int)($mmSav[$m['id']] ?? 0) ?>" data-location="<?= h($m['location_text']) ?>" data-date="<?= h(date('d F Y', strtotime($m['created_at']))) ?>" data-image="<?= h($m['image'] ?: 'images/marketplace-placeholder.jpg') ?>">
+                    <div class="pl-mm-listing-image"><img src="<?= h($m['image'] ?: 'images/marketplace-placeholder.jpg') ?>" alt="<?= h($m['title']) ?>" loading="lazy"><span class="pl-mm-status status-<?= $sk ?>"><?= h($sl) ?></span></div>
                     <div class="pl-mm-listing-body">
-                        <div class="pl-mm-listing-top">
-                            <div>
-                                <span class="pl-mm-category">Cars</span>
-                                <h3>Hyundai Creta SX Diesel</h3>
-                                <div class="pl-mm-location">
-                                    <i class="fa-solid fa-location-dot"></i>
-                                    Dehradun, Uttarakhand
-                                </div>
-                            </div>
-                            <strong class="pl-mm-price">₹12,50,000</strong>
-                        </div>
-
-                        <div class="pl-mm-listing-meta">
-                            <span><i class="fa-regular fa-calendar"></i> 10 Oct 2026</span>
-                            <span><i class="fa-solid fa-eye"></i> 542 views</span>
-                            <span><i class="fa-regular fa-envelope"></i> 18 enquiries</span>
-                        </div>
-
+                        <div class="pl-mm-listing-top"><div><span class="pl-mm-category"><?= h($m['category_text']) ?></span><h3><?= h($m['title']) ?></h3><div class="pl-mm-location"><i class="fa-solid fa-location-dot"></i> <?= h($m['location_text']) ?></div></div><strong class="pl-mm-price"><?= h($m['price_text']) ?></strong></div>
+                        <div class="pl-mm-listing-meta"><span><i class="fa-regular fa-calendar"></i> <?= h(date('d M Y', strtotime($m['created_at']))) ?></span><span><i class="fa-solid fa-eye"></i> <?= (int)($row['views'] ?? 0) ?> views</span><span><i class="fa-regular fa-envelope"></i> <?= (int)($mmEnq[$m['id']] ?? 0) ?> enquiries</span><span><i class="fa-regular fa-heart"></i> <?= (int)($mmSav[$m['id']] ?? 0) ?> saved</span></div>
                         <div class="pl-mm-listing-actions">
-                            <a href="marketplace-listing-details.php?id=101" class="pl-mm-action action-view">
-                                <i class="fa-regular fa-eye"></i> View
-                            </a>
-                            <a href="edit-marketplace-listing.php?id=101" class="pl-mm-action">
-                                <i class="fa-regular fa-pen-to-square"></i> Edit
-                            </a>
-                            <button type="button" class="pl-mm-action action-sold" data-action="sold">
-                                <i class="fa-solid fa-check"></i> Mark as Sold
-                            </button>
-                            <button type="button" class="pl-mm-action action-close" data-action="close">
-                                <i class="fa-solid fa-lock"></i> Close Listing
-                            </button>
-                            <button type="button" class="pl-mm-action action-delete" data-action="delete">
-                                <i class="fa-regular fa-trash-can"></i> Delete
-                            </button>
+                            <a href="marketplace-listing-details.php?id=<?= (int)$m['id'] ?>" class="pl-mm-action action-view"><i class="fa-regular fa-eye"></i> View</a>
+                            <?php if ($sk !== 'closed'): ?><a href="post-marketplace-listing.php?edit=<?= (int)$m['id'] ?>" class="pl-mm-action"><i class="fa-regular fa-pen-to-square"></i> <?= $sk === 'rejected' ? 'Edit &amp; Resubmit' : 'Edit' ?></a><?php endif; ?>
+                            <?php if ($sk === 'active'): ?>
+                            <form method="post" style="display:inline" onsubmit="return confirm('Mark this listing as sold? It will be closed.')"><?= web_csrf_field() ?><input type="hidden" name="do" value="sold"><input type="hidden" name="id" value="<?= (int)$m['id'] ?>"><button type="submit" class="pl-mm-action action-sold"><i class="fa-solid fa-check"></i> Mark as Sold</button></form>
+                            <?php endif; ?>
+                            <?php if ($sk === 'active' || $sk === 'pending'): ?>
+                            <form method="post" style="display:inline" onsubmit="return confirm('Close this listing?')"><?= web_csrf_field() ?><input type="hidden" name="do" value="close"><input type="hidden" name="id" value="<?= (int)$m['id'] ?>"><button type="submit" class="pl-mm-action action-close"><i class="fa-solid fa-lock"></i> Close Listing</button></form>
+                            <?php endif; ?>
+                            <form method="post" style="display:inline" onsubmit="return confirm('Delete this listing permanently?')"><?= web_csrf_field() ?><input type="hidden" name="do" value="delete"><input type="hidden" name="id" value="<?= (int)$m['id'] ?>"><button type="submit" class="pl-mm-action action-delete"><i class="fa-regular fa-trash-can"></i> Delete</button></form>
                         </div>
                     </div>
                 </article>
-
-                <!-- Listing 2 -->
-                <article class="pl-mm-listing"
-                         data-id="102"
-                         data-category="Property"
-                         data-status="pending"
-                         data-title="2 BHK Apartment Near City Centre"
-                         data-price="4500000"
-                         data-views="184"
-                         data-enquiries="7"
-                         data-saved="21"
-                         data-location="Rishikesh, Uttarakhand"
-                         data-date="9 October 2026"
-                         data-image="https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=800&q=85">
-
-                    <div class="pl-mm-listing-image">
-                        <img src="https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=800&q=85"
-                             alt="Modern apartment" loading="lazy">
-                        <span class="pl-mm-status status-pending">Pending Approval</span>
-                    </div>
-
-                    <div class="pl-mm-listing-body">
-                        <div class="pl-mm-listing-top">
-                            <div>
-                                <span class="pl-mm-category">Property</span>
-                                <h3>2 BHK Apartment Near City Centre</h3>
-                                <div class="pl-mm-location">
-                                    <i class="fa-solid fa-location-dot"></i>
-                                    Rishikesh, Uttarakhand
-                                </div>
-                            </div>
-                            <strong class="pl-mm-price">₹45,00,000</strong>
-                        </div>
-
-                        <div class="pl-mm-listing-meta">
-                            <span><i class="fa-regular fa-calendar"></i> 9 Oct 2026</span>
-                            <span><i class="fa-solid fa-eye"></i> 184 views</span>
-                            <span><i class="fa-regular fa-envelope"></i> 7 enquiries</span>
-                        </div>
-
-                        <div class="pl-mm-listing-actions">
-                            <a href="marketplace-listing-details.php?id=102" class="pl-mm-action action-view">
-                                <i class="fa-regular fa-eye"></i> View
-                            </a>
-                            <a href="edit-marketplace-listing.php?id=102" class="pl-mm-action">
-                                <i class="fa-regular fa-pen-to-square"></i> Edit
-                            </a>
-                            <button type="button" class="pl-mm-action action-delete" data-action="delete">
-                                <i class="fa-regular fa-trash-can"></i> Delete
-                            </button>
-                        </div>
-                    </div>
-                </article>
-
-                <!-- Listing 3 -->
-                <article class="pl-mm-listing"
-                         data-id="103"
-                         data-category="Electronics"
-                         data-status="draft"
-                         data-title="Apple MacBook Air M2"
-                         data-price="65000"
-                         data-views="0"
-                         data-enquiries="0"
-                         data-saved="0"
-                         data-location="Haridwar, Uttarakhand"
-                         data-date="8 October 2026"
-                         data-image="https://images.unsplash.com/photo-1517336714731-489689fd1ca8?auto=format&fit=crop&w=800&q=85">
-
-                    <div class="pl-mm-listing-image">
-                        <img src="https://images.unsplash.com/photo-1517336714731-489689fd1ca8?auto=format&fit=crop&w=800&q=85"
-                             alt="Laptop for sale" loading="lazy">
-                        <span class="pl-mm-status status-draft">Draft</span>
-                    </div>
-
-                    <div class="pl-mm-listing-body">
-                        <div class="pl-mm-listing-top">
-                            <div>
-                                <span class="pl-mm-category">Electronics</span>
-                                <h3>Apple MacBook Air M2</h3>
-                                <div class="pl-mm-location">
-                                    <i class="fa-solid fa-location-dot"></i>
-                                    Haridwar, Uttarakhand
-                                </div>
-                            </div>
-                            <strong class="pl-mm-price">₹65,000</strong>
-                        </div>
-
-                        <div class="pl-mm-listing-meta">
-                            <span><i class="fa-regular fa-calendar"></i> 8 Oct 2026</span>
-                            <span><i class="fa-solid fa-eye"></i> 0 views</span>
-                            <span><i class="fa-regular fa-envelope"></i> 0 enquiries</span>
-                        </div>
-
-                        <div class="pl-mm-listing-actions">
-                            <a href="marketplace-listing-details.php?id=103" class="pl-mm-action action-view">
-                                <i class="fa-regular fa-eye"></i> Preview
-                            </a>
-                            <a href="edit-marketplace-listing.php?id=103" class="pl-mm-action">
-                                <i class="fa-regular fa-pen-to-square"></i> Continue Editing
-                            </a>
-                            <button type="button" class="pl-mm-action action-delete" data-action="delete">
-                                <i class="fa-regular fa-trash-can"></i> Delete
-                            </button>
-                        </div>
-                    </div>
-                </article>
-
-                <!-- Listing 4 -->
-                <article class="pl-mm-listing"
-                         data-id="104"
-                         data-category="Furniture"
-                         data-status="sold"
-                         data-title="Solid Wood Dining Table"
-                         data-price="18000"
-                         data-views="275"
-                         data-enquiries="9"
-                         data-saved="16"
-                         data-location="Dehradun, Uttarakhand"
-                         data-date="5 October 2026"
-                         data-image="https://images.unsplash.com/photo-1617806118233-18e1de247200?auto=format&fit=crop&w=800&q=85">
-
-                    <div class="pl-mm-listing-image">
-                        <img src="https://images.unsplash.com/photo-1617806118233-18e1de247200?auto=format&fit=crop&w=800&q=85"
-                             alt="Wooden dining table" loading="lazy">
-                        <span class="pl-mm-status status-sold">Sold</span>
-                    </div>
-
-                    <div class="pl-mm-listing-body">
-                        <div class="pl-mm-listing-top">
-                            <div>
-                                <span class="pl-mm-category">Furniture</span>
-                                <h3>Solid Wood Dining Table</h3>
-                                <div class="pl-mm-location">
-                                    <i class="fa-solid fa-location-dot"></i>
-                                    Dehradun, Uttarakhand
-                                </div>
-                            </div>
-                            <strong class="pl-mm-price">₹18,000</strong>
-                        </div>
-
-                        <div class="pl-mm-listing-meta">
-                            <span><i class="fa-regular fa-calendar"></i> 5 Oct 2026</span>
-                            <span><i class="fa-solid fa-eye"></i> 275 views</span>
-                            <span><i class="fa-regular fa-envelope"></i> 9 enquiries</span>
-                        </div>
-
-                        <div class="pl-mm-listing-actions">
-                            <a href="marketplace-listing-details.php?id=104" class="pl-mm-action action-view">
-                                <i class="fa-regular fa-eye"></i> View
-                            </a>
-                            <a href="edit-marketplace-listing.php?id=104" class="pl-mm-action">
-                                <i class="fa-regular fa-pen-to-square"></i> Edit
-                            </a>
-                            <button type="button" class="pl-mm-action action-delete" data-action="delete">
-                                <i class="fa-regular fa-trash-can"></i> Delete
-                            </button>
-                        </div>
-                    </div>
-                </article>
-
-                <!-- Listing 5 -->
-                <article class="pl-mm-listing"
-                         data-id="105"
-                         data-category="Bikes"
-                         data-status="closed"
-                         data-title="Royal Enfield Classic 350"
-                         data-price="145000"
-                         data-views="166"
-                         data-enquiries="2"
-                         data-saved="9"
-                         data-location="Rishikesh, Uttarakhand"
-                         data-date="3 October 2026"
-                         data-image="https://images.unsplash.com/photo-1558981806-ec527fa84c39?auto=format&fit=crop&w=800&q=85">
-
-                    <div class="pl-mm-listing-image">
-                        <img src="https://images.unsplash.com/photo-1558981806-ec527fa84c39?auto=format&fit=crop&w=800&q=85"
-                             alt="Motorcycle listing" loading="lazy">
-                        <span class="pl-mm-status status-closed">Closed</span>
-                    </div>
-
-                    <div class="pl-mm-listing-body">
-                        <div class="pl-mm-listing-top">
-                            <div>
-                                <span class="pl-mm-category">Bikes</span>
-                                <h3>Royal Enfield Classic 350</h3>
-                                <div class="pl-mm-location">
-                                    <i class="fa-solid fa-location-dot"></i>
-                                    Rishikesh, Uttarakhand
-                                </div>
-                            </div>
-                            <strong class="pl-mm-price">₹1,45,000</strong>
-                        </div>
-
-                        <div class="pl-mm-listing-meta">
-                            <span><i class="fa-regular fa-calendar"></i> 3 Oct 2026</span>
-                            <span><i class="fa-solid fa-eye"></i> 166 views</span>
-                            <span><i class="fa-regular fa-envelope"></i> 2 enquiries</span>
-                        </div>
-
-                        <div class="pl-mm-listing-actions">
-                            <a href="marketplace-listing-details.php?id=105" class="pl-mm-action action-view">
-                                <i class="fa-regular fa-eye"></i> View
-                            </a>
-                            <a href="edit-marketplace-listing.php?id=105" class="pl-mm-action">
-                                <i class="fa-regular fa-pen-to-square"></i> Edit
-                            </a>
-                            <button type="button" class="pl-mm-action action-delete" data-action="delete">
-                                <i class="fa-regular fa-trash-can"></i> Delete
-                            </button>
-                        </div>
-                    </div>
-                </article>
-
-                <!-- Listing 6 -->
-                <article class="pl-mm-listing"
-                         data-id="106"
-                         data-category="Services"
-                         data-status="rejected"
-                         data-title="Home Cleaning Services"
-                         data-price="1500"
-                         data-views="81"
-                         data-enquiries="0"
-                         data-saved="6"
-                         data-location="Haridwar, Uttarakhand"
-                         data-date="2 October 2026"
-                         data-image="https://images.unsplash.com/photo-1493663284031-b7e3aefcae8e?auto=format&fit=crop&w=800&q=85"
-                         data-reason="Please add a clear service area and complete your pricing details before resubmitting.">
-
-                    <div class="pl-mm-listing-image">
-                        <img src="https://images.unsplash.com/photo-1493663284031-b7e3aefcae8e?auto=format&fit=crop&w=800&q=85"
-                             alt="Home cleaning service" loading="lazy">
-                        <span class="pl-mm-status status-rejected">Rejected</span>
-                    </div>
-
-                    <div class="pl-mm-listing-body">
-                        <div class="pl-mm-listing-top">
-                            <div>
-                                <span class="pl-mm-category">Services</span>
-                                <h3>Home Cleaning Services</h3>
-                                <div class="pl-mm-location">
-                                    <i class="fa-solid fa-location-dot"></i>
-                                    Haridwar, Uttarakhand
-                                </div>
-                            </div>
-                            <strong class="pl-mm-price">₹1,500</strong>
-                        </div>
-
-                        <div class="pl-mm-rejection-note">
-                            <i class="fa-solid fa-circle-exclamation"></i>
-                            Please update the listing details before resubmitting.
-                        </div>
-
-                        <div class="pl-mm-listing-meta">
-                            <span><i class="fa-regular fa-calendar"></i> 2 Oct 2026</span>
-                            <span><i class="fa-solid fa-eye"></i> 81 views</span>
-                            <span><i class="fa-regular fa-envelope"></i> 0 enquiries</span>
-                        </div>
-
-                        <div class="pl-mm-listing-actions">
-                            <a href="marketplace-listing-details.php?id=106" class="pl-mm-action action-view">
-                                <i class="fa-regular fa-eye"></i> View
-                            </a>
-                            <a href="marketplace-rejection-reason.php?id=106" class="pl-mm-action action-reason">
-                                <i class="fa-solid fa-circle-info"></i> View Reason
-                            </a>
-                            <a href="edit-marketplace-listing.php?id=106&resubmit=1" class="pl-mm-action">
-                                <i class="fa-solid fa-rotate"></i> Edit &amp; Resubmit
-                            </a>
-                            <button type="button" class="pl-mm-action action-delete" data-action="delete">
-                                <i class="fa-regular fa-trash-can"></i> Delete
-                            </button>
-                        </div>
-                    </div>
-                </article>
+                <?php endforeach; ?>
 
             </div>
 
@@ -528,6 +238,22 @@
         </section>
 
     </div>
+<div class="pl-mm-container">
+        <!-- Enquiries received (live) -->
+        <section class="pl-mm-panel" id="enquiries" style="margin-top:24px">
+            <div class="pl-mm-panel-heading"><div><h2>Enquiries Received</h2><p>Messages from members interested in your listings.</p></div><span class="pl-mm-total-badge"><?= count($mmEnquiries) ?> enquir<?= count($mmEnquiries) === 1 ? 'y' : 'ies' ?></span></div>
+            <?php if (!$mmEnquiries): ?><p style="padding:8px 0;color:#64748b">No enquiries yet. They appear here when members contact you about a listing.</p><?php endif; ?>
+            <div style="display:grid;gap:12px">
+            <?php foreach ($mmEnquiries as $q): $tel = preg_replace('/[^\d+]/', '', (string)$q['phone']); ?>
+                <article style="border:1px solid #e2e8f0;border-radius:14px;padding:14px 16px;background:#fff">
+                    <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap"><strong><?= h($q['name'] ?: 'Member') ?></strong><small style="color:#64748b"><?= h(date('d M Y, h:i A', strtotime($q['created_at']))) ?> · <a href="marketplace-listing-details.php?id=<?= (int)$q['item_id'] ?>"><?= h($q['item_title'] ?? 'Listing') ?></a></small></div>
+                    <?php if (trim((string)$q['message']) !== ''): ?><p style="margin:8px 0;white-space:pre-line"><?= h($q['message']) ?></p><?php endif; ?>
+                    <div style="display:flex;gap:14px;flex-wrap:wrap;font-size:.92rem"><?php if ($tel): ?><a href="tel:<?= h($tel) ?>"><i class="fa-solid fa-phone"></i> <?= h($q['phone']) ?></a><a href="https://wa.me/<?= h(strlen(preg_replace('/\D/', '', $tel)) === 10 ? '91' . preg_replace('/\D/', '', $tel) : preg_replace('/\D/', '', $tel)) ?>" target="_blank" rel="noopener"><i class="fa-brands fa-whatsapp"></i> WhatsApp</a><?php endif; ?><?php if ($q['email']): ?><a href="mailto:<?= h($q['email']) ?>"><i class="fa-regular fa-envelope"></i> <?= h($q['email']) ?></a><?php endif; ?></div>
+                </article>
+            <?php endforeach; ?>
+            </div>
+        </section>
+</div>
 </main>
 
  

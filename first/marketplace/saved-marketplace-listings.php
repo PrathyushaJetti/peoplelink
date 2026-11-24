@@ -1,4 +1,11 @@
-<?php include 'header.php'; ?>
+<?php
+// Saved Marketplace Listings (live: the member's saved listings — marketplace_saved / marketplace_save)
+require_once dirname(__DIR__) . '/_web.php';
+web_require_login();
+$_REQUEST['per'] = 50; $_REQUEST['page'] = 1;
+$smItems = array_map('web_mp_card', web_call('marketplace_saved', ['per' => 50])['items'] ?? []);
+$smSavedAt = $smItems ? array_column(rows("SELECT entity_id, created_at FROM favourites WHERE user_id=? AND entity='mp_listings'", [$webUid]), 'created_at', 'entity_id') : [];
+include 'header.php'; ?>
 
  
 
@@ -28,7 +35,7 @@
             </div>
             <div>
                 <span>My Saved Listings</span>
-                <strong id="plSmSavedCount">6 Listings</strong>
+                <strong id="plSmSavedCount"><?= count($smItems) ?> Listings</strong>
                 <p>Keep track of the items and services you are interested in.</p>
             </div>
             <div class="pl-sm-summary-decoration">
@@ -42,7 +49,7 @@
             <div class="pl-sm-toolbar-heading">
                 <div>
                     <h2>Your Favourites</h2>
-                    <p id="plSmResultCount">Showing 6 saved listings</p>
+                    <p id="plSmResultCount">Showing <?= count($smItems) ?> saved listings</p>
                 </div>
             </div>
 
@@ -85,330 +92,22 @@
         <section class="pl-sm-grid" id="plSmGrid" aria-label="Saved marketplace listings">
 
             <!-- Property -->
-            <article class="pl-sm-card"
-                     data-id="201"
-                     data-category="Property"
-                     data-title="Premium 2 BHK Apartment"
-                     data-price="4500000"
-                     data-location="Rishikesh, Uttarakhand"
-                     data-condition="Ready to Move"
-                     data-availability="active"
-                     data-posted="2026-10-10"
-                     data-saved="2026-10-13">
-
+            <?php foreach ($smItems as $m): $open = empty($m['expired']); ?>
+            <article class="pl-sm-card" data-id="<?= (int)$m['id'] ?>" data-category="<?= h($m['category_name']) ?>" data-title="<?= h($m['title']) ?>" data-price="<?= (int)$m['price'] ?>" data-location="<?= h($m['location_text']) ?>" data-condition="<?= h($m['item_condition']) ?>" data-availability="<?= $open ? 'active' : 'closed' ?>" data-posted="<?= h($m['posted']) ?>" data-saved="<?= h(substr((string)($smSavedAt[$m['id']] ?? $m['created_at']), 0, 10)) ?>">
                 <div class="pl-sm-image-wrap">
-                    <img src="https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=800&q=85"
-                         alt="Premium apartment interior" loading="lazy">
-
-                    <span class="pl-sm-category-tag">Property</span>
-                    <span class="pl-sm-availability available">
-                        <i class="fa-solid fa-circle-check"></i> Available
-                    </span>
-
-                    <button type="button" class="pl-sm-remove" data-action="remove"
-                            aria-label="Remove Premium 2 BHK Apartment from saved listings"
-                            title="Remove from saved">
-                        <i class="fa-solid fa-heart"></i>
-                    </button>
+                    <img src="<?= h($m['image'] ?: 'images/marketplace-placeholder.jpg') ?>" alt="<?= h($m['title']) ?>" loading="lazy">
+                    <span class="pl-sm-category-tag"><?= h($m['category_name']) ?></span>
+                    <span class="pl-sm-availability <?= $open ? 'available' : 'sold' ?>"><i class="fa-solid <?= $open ? 'fa-circle-check' : 'fa-circle-xmark' ?>"></i> <?= $open ? 'Available' : 'No longer available' ?></span>
+                    <button type="button" class="pl-sm-remove" data-action="remove" data-live-id="<?= (int)$m['id'] ?>" aria-label="Remove <?= h($m['title']) ?> from saved listings" title="Remove from saved"><i class="fa-solid fa-heart"></i></button>
                 </div>
-
                 <div class="pl-sm-card-body">
-                    <div class="pl-sm-card-heading">
-                        <h3>Premium 2 BHK Apartment</h3>
-                        <strong class="pl-sm-price">₹45,00,000</strong>
-                    </div>
-
-                    <p class="pl-sm-location">
-                        <i class="fa-solid fa-location-dot"></i> Rishikesh, Uttarakhand
-                    </p>
-
-                    <div class="pl-sm-details">
-                        <span><i class="fa-solid fa-house"></i> Ready to Move</span>
-                        <span><i class="fa-regular fa-calendar"></i> Posted 10 Oct 2026</span>
-                    </div>
-
-                    <div class="pl-sm-card-footer">
-                        <a href="marketplace-listing-details.php?id=201"
-                           class="pl-sm-btn pl-sm-btn-outline">
-                            View Details
-                        </a>
-                        <a href="marketplace-enquiry.php?id=201"
-                           class="pl-sm-btn pl-sm-btn-contact">
-                            <i class="fa-regular fa-comment-dots"></i> Contact Seller
-                        </a>
-                    </div>
+                    <div class="pl-sm-card-heading"><h3><?= h($m['title']) ?></h3><strong class="pl-sm-price"><?= h($m['price_text']) ?></strong></div>
+                    <p class="pl-sm-location"><i class="fa-solid fa-location-dot"></i> <?= h($m['location_text']) ?></p>
+                    <div class="pl-sm-details"><?php if ($m['item_condition']): ?><span><i class="fa-solid fa-tag"></i> <?= h($m['item_condition']) ?></span><?php endif; ?><span><i class="fa-regular fa-calendar"></i> Posted <?= h(date('d M Y', strtotime($m['created_at']))) ?></span></div>
+                    <div class="pl-sm-card-footer"><a href="marketplace-listing-details.php?id=<?= (int)$m['id'] ?>" class="pl-sm-btn pl-sm-btn-outline">View Details</a><a href="contact-seller.php?id=<?= (int)$m['id'] ?>" class="pl-sm-btn pl-sm-btn-contact"><i class="fa-regular fa-comment-dots"></i> Contact Seller</a></div>
                 </div>
             </article>
-
-            <!-- Car -->
-            <article class="pl-sm-card"
-                     data-id="202"
-                     data-category="Cars"
-                     data-title="Hyundai Creta SX Diesel"
-                     data-price="1250000"
-                     data-location="Dehradun, Uttarakhand"
-                     data-condition="Used"
-                     data-availability="active"
-                     data-posted="2026-10-11"
-                     data-saved="2026-10-12">
-
-                <div class="pl-sm-image-wrap">
-                    <img src="https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=800&q=85"
-                         alt="Car for sale" loading="lazy">
-
-                    <span class="pl-sm-category-tag">Cars</span>
-                    <span class="pl-sm-availability available">
-                        <i class="fa-solid fa-circle-check"></i> Available
-                    </span>
-
-                    <button type="button" class="pl-sm-remove" data-action="remove"
-                            aria-label="Remove Hyundai Creta SX Diesel from saved listings"
-                            title="Remove from saved">
-                        <i class="fa-solid fa-heart"></i>
-                    </button>
-                </div>
-
-                <div class="pl-sm-card-body">
-                    <div class="pl-sm-card-heading">
-                        <h3>Hyundai Creta SX Diesel</h3>
-                        <strong class="pl-sm-price">₹12,50,000</strong>
-                    </div>
-
-                    <p class="pl-sm-location">
-                        <i class="fa-solid fa-location-dot"></i> Dehradun, Uttarakhand
-                    </p>
-
-                    <div class="pl-sm-details">
-                        <span><i class="fa-solid fa-car"></i> Used</span>
-                        <span><i class="fa-regular fa-calendar"></i> Posted 11 Oct 2026</span>
-                    </div>
-
-                    <div class="pl-sm-card-footer">
-                        <a href="marketplace-listing-details.php?id=202"
-                           class="pl-sm-btn pl-sm-btn-outline">View Details</a>
-                        <a href="marketplace-enquiry.php?id=202"
-                           class="pl-sm-btn pl-sm-btn-contact">
-                            <i class="fa-regular fa-comment-dots"></i> Contact Seller
-                        </a>
-                    </div>
-                </div>
-            </article>
-
-            <!-- Electronics -->
-            <article class="pl-sm-card"
-                     data-id="203"
-                     data-category="Electronics"
-                     data-title="Apple MacBook Air M2"
-                     data-price="65000"
-                     data-location="Haridwar, Uttarakhand"
-                     data-condition="Like New"
-                     data-availability="active"
-                     data-posted="2026-10-09"
-                     data-saved="2026-10-11">
-
-                <div class="pl-sm-image-wrap">
-                    <img src="https://images.unsplash.com/photo-1517336714731-489689fd1ca8?auto=format&fit=crop&w=800&q=85"
-                         alt="Apple MacBook laptop" loading="lazy">
-
-                    <span class="pl-sm-category-tag">Electronics</span>
-                    <span class="pl-sm-availability available">
-                        <i class="fa-solid fa-circle-check"></i> Available
-                    </span>
-
-                    <button type="button" class="pl-sm-remove" data-action="remove"
-                            aria-label="Remove Apple MacBook Air M2 from saved listings"
-                            title="Remove from saved">
-                        <i class="fa-solid fa-heart"></i>
-                    </button>
-                </div>
-
-                <div class="pl-sm-card-body">
-                    <div class="pl-sm-card-heading">
-                        <h3>Apple MacBook Air M2</h3>
-                        <strong class="pl-sm-price">₹65,000</strong>
-                    </div>
-
-                    <p class="pl-sm-location">
-                        <i class="fa-solid fa-location-dot"></i> Haridwar, Uttarakhand
-                    </p>
-
-                    <div class="pl-sm-details">
-                        <span><i class="fa-solid fa-laptop"></i> Like New</span>
-                        <span><i class="fa-regular fa-calendar"></i> Posted 9 Oct 2026</span>
-                    </div>
-
-                    <div class="pl-sm-card-footer">
-                        <a href="marketplace-listing-details.php?id=203"
-                           class="pl-sm-btn pl-sm-btn-outline">View Details</a>
-                        <a href="marketplace-enquiry.php?id=203"
-                           class="pl-sm-btn pl-sm-btn-contact">
-                            <i class="fa-regular fa-comment-dots"></i> Contact Seller
-                        </a>
-                    </div>
-                </div>
-            </article>
-
-            <!-- Furniture: Sold -->
-            <article class="pl-sm-card"
-                     data-id="204"
-                     data-category="Furniture"
-                     data-title="Solid Wood Dining Table"
-                     data-price="18000"
-                     data-location="Dehradun, Uttarakhand"
-                     data-condition="Good Condition"
-                     data-availability="sold"
-                     data-posted="2026-10-06"
-                     data-saved="2026-10-10">
-
-                <div class="pl-sm-image-wrap">
-                    <img src="https://images.unsplash.com/photo-1617806118233-18e1de247200?auto=format&fit=crop&w=800&q=85"
-                         alt="Wooden dining table" loading="lazy">
-
-                    <span class="pl-sm-category-tag">Furniture</span>
-                    <span class="pl-sm-availability unavailable">
-                        <i class="fa-solid fa-circle-xmark"></i> Sold / Closed
-                    </span>
-
-                    <button type="button" class="pl-sm-remove" data-action="remove"
-                            aria-label="Remove Solid Wood Dining Table from saved listings"
-                            title="Remove from saved">
-                        <i class="fa-solid fa-heart"></i>
-                    </button>
-                </div>
-
-                <div class="pl-sm-card-body">
-                    <div class="pl-sm-card-heading">
-                        <h3>Solid Wood Dining Table</h3>
-                        <strong class="pl-sm-price">₹18,000</strong>
-                    </div>
-
-                    <p class="pl-sm-location">
-                        <i class="fa-solid fa-location-dot"></i> Dehradun, Uttarakhand
-                    </p>
-
-                    <div class="pl-sm-details">
-                        <span><i class="fa-solid fa-chair"></i> Good Condition</span>
-                        <span><i class="fa-regular fa-calendar"></i> Posted 6 Oct 2026</span>
-                    </div>
-
-                    <div class="pl-sm-card-footer">
-                        <a href="marketplace-listing-details.php?id=204"
-                           class="pl-sm-btn pl-sm-btn-outline">View Details</a>
-                        <a href="marketplace-enquiry.php?id=204"
-                           class="pl-sm-btn pl-sm-btn-contact">
-                            <i class="fa-regular fa-comment-dots"></i> Contact Seller
-                        </a>
-                    </div>
-                </div>
-            </article>
-
-            <!-- Bike -->
-            <article class="pl-sm-card"
-                     data-id="205"
-                     data-category="Bikes"
-                     data-title="Royal Enfield Classic 350"
-                     data-price="145000"
-                     data-location="Rishikesh, Uttarakhand"
-                     data-condition="Used"
-                     data-availability="active"
-                     data-posted="2026-10-08"
-                     data-saved="2026-10-09">
-
-                <div class="pl-sm-image-wrap">
-                    <img src="https://images.unsplash.com/photo-1558981806-ec527fa84c39?auto=format&fit=crop&w=800&q=85"
-                         alt="Motorcycle for sale" loading="lazy">
-
-                    <span class="pl-sm-category-tag">Bikes</span>
-                    <span class="pl-sm-availability available">
-                        <i class="fa-solid fa-circle-check"></i> Available
-                    </span>
-
-                    <button type="button" class="pl-sm-remove" data-action="remove"
-                            aria-label="Remove Royal Enfield Classic 350 from saved listings"
-                            title="Remove from saved">
-                        <i class="fa-solid fa-heart"></i>
-                    </button>
-                </div>
-
-                <div class="pl-sm-card-body">
-                    <div class="pl-sm-card-heading">
-                        <h3>Royal Enfield Classic 350</h3>
-                        <strong class="pl-sm-price">₹1,45,000</strong>
-                    </div>
-
-                    <p class="pl-sm-location">
-                        <i class="fa-solid fa-location-dot"></i> Rishikesh, Uttarakhand
-                    </p>
-
-                    <div class="pl-sm-details">
-                        <span><i class="fa-solid fa-motorcycle"></i> Used</span>
-                        <span><i class="fa-regular fa-calendar"></i> Posted 8 Oct 2026</span>
-                    </div>
-
-                    <div class="pl-sm-card-footer">
-                        <a href="marketplace-listing-details.php?id=205"
-                           class="pl-sm-btn pl-sm-btn-outline">View Details</a>
-                        <a href="marketplace-enquiry.php?id=205"
-                           class="pl-sm-btn pl-sm-btn-contact">
-                            <i class="fa-regular fa-comment-dots"></i> Contact Seller
-                        </a>
-                    </div>
-                </div>
-            </article>
-
-            <!-- Services -->
-            <article class="pl-sm-card"
-                     data-id="206"
-                     data-category="Services"
-                     data-title="Professional Home Cleaning"
-                     data-price="1500"
-                     data-location="Haridwar, Uttarakhand"
-                     data-condition="Professional Service"
-                     data-availability="active"
-                     data-posted="2026-10-12"
-                     data-saved="2026-10-13">
-
-                <div class="pl-sm-image-wrap">
-                    <img src="https://images.unsplash.com/photo-1493663284031-b7e3aefcae8e?auto=format&fit=crop&w=800&q=85"
-                         alt="Professional home cleaning service" loading="lazy">
-
-                    <span class="pl-sm-category-tag">Services</span>
-                    <span class="pl-sm-availability available">
-                        <i class="fa-solid fa-circle-check"></i> Available
-                    </span>
-
-                    <button type="button" class="pl-sm-remove" data-action="remove"
-                            aria-label="Remove Professional Home Cleaning from saved listings"
-                            title="Remove from saved">
-                        <i class="fa-solid fa-heart"></i>
-                    </button>
-                </div>
-
-                <div class="pl-sm-card-body">
-                    <div class="pl-sm-card-heading">
-                        <h3>Professional Home Cleaning</h3>
-                        <strong class="pl-sm-price">₹1,500</strong>
-                    </div>
-
-                    <p class="pl-sm-location">
-                        <i class="fa-solid fa-location-dot"></i> Haridwar, Uttarakhand
-                    </p>
-
-                    <div class="pl-sm-details">
-                        <span><i class="fa-solid fa-broom"></i> Professional Service</span>
-                        <span><i class="fa-regular fa-calendar"></i> Posted 12 Oct 2026</span>
-                    </div>
-
-                    <div class="pl-sm-card-footer">
-                        <a href="marketplace-listing-details.php?id=206"
-                           class="pl-sm-btn pl-sm-btn-outline">View Details</a>
-                        <a href="marketplace-enquiry.php?id=206"
-                           class="pl-sm-btn pl-sm-btn-contact">
-                            <i class="fa-regular fa-comment-dots"></i> Contact Seller
-                        </a>
-                    </div>
-                </div>
-            </article>
+            <?php endforeach; ?>
 
         </section>
 

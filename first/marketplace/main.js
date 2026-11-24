@@ -1660,6 +1660,24 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     document.querySelectorAll('[data-save-id]').forEach(function (button) {
+        // Live listings (rendered by PHP): saved in the member's account via the marketplace API
+        if (button.dataset.live === '1') {
+            updateSaveButton(button, button.dataset.saved === '1');
+            button.addEventListener('click', async function (event) {
+                event.preventDefault(); event.stopPropagation();
+                if (!window.PL || !PL.requireLogin()) return;
+                button.disabled = true;
+                try {
+                    const r = await PL.post('marketplace_save', { id: button.dataset.saveId });
+                    if (!r.ok) { PL.toast(r.error || 'Could not save this listing.', true); return; }
+                    updateSaveButton(button, !!r.saved);
+                    PL.toast(r.saved ? 'Listing saved.' : 'Removed from saved listings.');
+                    const card = button.closest('[data-saved-card]');
+                    if (card && !r.saved) card.remove();
+                } catch (e) { /* redirected to login */ } finally { button.disabled = false; }
+            });
+            return;
+        }
         const id = String(button.dataset.saveId);
         updateSaveButton(button, savedIds.includes(id));
 
@@ -1964,7 +1982,7 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
     /* Save listing - demo interaction */
-    saveButton.addEventListener("click", function () {
+    if (saveButton) saveButton.addEventListener("click", function () {
         const currentlySaved =
             saveButton.getAttribute("aria-pressed") === "true";
 
@@ -1992,7 +2010,7 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
     /* Share listing */
-    shareButton.addEventListener("click", async function () {
+    if (shareButton) shareButton.addEventListener("click", async function () {
         const shareData = {
             title: document.title || "PeopleLink Marketplace Listing",
             text: "Check out this marketplace listing on PeopleLink.",
@@ -2050,11 +2068,11 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
-    openEnquiryButton.addEventListener("click", function () {
+    if (openEnquiryButton) openEnquiryButton.addEventListener("click", function () {
         openModal(enquiryModal);
     });
 
-    reportButton.addEventListener("click", function () {
+    if (reportButton) reportButton.addEventListener("click", function () {
         openModal(reportModal);
     });
 
@@ -2074,7 +2092,7 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
     /* Demo enquiry form */
-    enquiryForm.addEventListener("submit", function (event) {
+    if (enquiryForm) enquiryForm.addEventListener("submit", function (event) {
         event.preventDefault();
 
         if (!enquiryForm.reportValidity()) return;
@@ -2088,7 +2106,7 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
     /* Demo report form */
-    reportForm.addEventListener("submit", function (event) {
+    if (reportForm) reportForm.addEventListener("submit", function (event) {
         event.preventDefault();
 
         if (!reportForm.reportValidity()) return;
@@ -2696,7 +2714,7 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
         }
 
-        if (!mainImageInput.files.length) {
+        if (!mainImageInput.files.length && !window.PM_EDIT_ID) {
             showToast("Please select a main listing image.");
             mainImageInput.focus();
             return;
@@ -2709,21 +2727,26 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
         }
 
-        /*
-         * This page is a front-end template.
-         * Replace this demo handler with a fetch() request to your PHP
-         * backend that validates the data, uploads images, stores the
-         * listing, and returns the real approval status.
-         */
+        // Real submission: post-marketplace-listing.php saves it through the marketplace backend (same as the app)
         closeModal(previewModal);
-
-        document.getElementById("plPostFeedbackTitle").textContent =
-            "Demo Preview Complete";
-
-        document.getElementById("plPostFeedbackMessage").textContent =
-            "The form passed browser validation, but no listing has been uploaded or submitted. Connect your PHP backend to save the listing and show its actual approval status.";
-
-        openModal(feedbackModal);
+        const fd = new FormData(form);
+        fd.append("csrf", (window.PL_WEB || {}).csrf || "");
+        if (window.PM_EDIT_ID) fd.append("edit_id", window.PM_EDIT_ID);
+        previewSubmitButton.disabled = true;
+        fetch(window.location.pathname + (window.PM_EDIT_ID ? "?edit=" + window.PM_EDIT_ID : ""), { method: "POST", body: fd, credentials: "same-origin" })
+            .then(function (res) { return res.json(); })
+            .then(function (r) {
+                if (!r.ok) { showToast(r.error || "Could not save the listing."); return; }
+                try { localStorage.removeItem("peoplelink-listing-draft"); } catch (e) {}
+                document.getElementById("plPostFeedbackTitle").textContent = window.PM_EDIT_ID ? "Listing Updated" : "Listing Submitted";
+                document.getElementById("plPostFeedbackMessage").textContent = (r.message || "Saved.") +
+                    (r.upload_error ? " Some photos were not uploaded: " + r.upload_error : "") +
+                    " You can follow its status in My Listings.";
+                openModal(feedbackModal);
+                feedbackCloseButton.addEventListener("click", function () { window.location.href = "my-marketplace-listings.php"; }, { once: true });
+            })
+            .catch(function () { showToast("Could not reach the server. Please try again."); })
+            .finally(function () { previewSubmitButton.disabled = false; });
     }
 
     form.addEventListener("submit", function (event) {
@@ -2740,8 +2763,31 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
     /* Initialize */
-    updateCategoryFields();
-    restoreDraft();
+    if (window.PM_FILL && Object.keys(window.PM_FILL).length) {
+        // edit mode / account details: fill the form from the server
+        const fill = window.PM_FILL;
+        const setVal = function (name, v) {
+            form.querySelectorAll('[name="' + name + '"]').forEach(function (el) {
+                if (el.type === "radio" || el.type === "checkbox") { el.checked = String(el.value) === String(v); if (el.checked) el.dispatchEvent(new Event("change", { bubbles: true })); }
+                else if (el.type !== "file") {
+                    if (el.tagName === "SELECT" && v && !Array.from(el.options).some(function (o) { return o.value === String(v); })) el.add(new Option(v, v));
+                    el.value = v; el.dispatchEvent(new Event("change", { bubbles: true }));
+                }
+            });
+        };
+        if (fill.category) setVal("category", fill.category);
+        updateCategoryFields();
+        Object.keys(fill).forEach(function (k) {
+            const v = fill[k];
+            if (k === "category") return;
+            if (Array.isArray(v)) { form.querySelectorAll('[name="' + k + '[]"]').forEach(function (el) { el.checked = v.indexOf(el.value) !== -1; }); return; }
+            setVal(k, v);
+        });
+        if (window.PM_EDIT_ID) { const h = document.querySelector(".pl-post-header h1, .pl-post-hero h1, main h1"); if (h) h.textContent = "Edit Listing"; }
+    } else {
+        updateCategoryFields();
+        restoreDraft();
+    }
 });
 
 
@@ -3388,9 +3434,17 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (!shouldRemove) return;
 
-        card.remove();
-        updateCount();
-        applyFilters();
+        const finish = function () { card.remove(); updateCount(); applyFilters(); };
+        if (!button.dataset.liveId || !window.PL) { finish(); return; }
+        // saved listings live in the member's account: remove there too (marketplace_save toggles it off)
+        button.disabled = true;
+        PL.post("marketplace_save", { id: button.dataset.liveId }).then(function (r) {
+            if (r.ok && r.saved) return PL.post("marketplace_save", { id: button.dataset.liveId }); // it was not saved: undo
+            return r;
+        }).then(function (r) {
+            if (r && r.ok === false) { button.disabled = false; PL.toast(r.error || "Could not remove.", true); return; }
+            finish();
+        }).catch(function () { button.disabled = false; });
     });
 
     updateCount();
