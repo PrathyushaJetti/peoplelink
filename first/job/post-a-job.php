@@ -1,5 +1,5 @@
 <?php
-// Page 40 – Post a Job (live: saved through the backend action jobs_create → admin approval queue)
+// Page 40 – Post a Job / Edit Job (live: jobs_create, or jobs_update with ?edit=ID → admin approval queue)
 require_once dirname(__DIR__) . '/_web.php';
 web_require_login();
 web_require_community();
@@ -7,6 +7,10 @@ web_require_community();
 $errors = [];
 $success = false;
 $submittedJob = null;
+// Edit mode: only the poster's own job, and not a closed one (closed jobs are renewed from My Posted Jobs)
+$editId = (int)($_GET['edit'] ?? 0);
+$editJob = $editId ? pl_api_own(pl_entity('job'), $editId, $webUid) : null;
+if ($editId && (!$editJob || $editJob['status'] === 'closed')) { flash($editJob ? 'This job is closed. Renew it to make changes.' : 'Job not found.', 'error'); header('Location: my-posted-jobs.php'); exit; }
 $jobCats = pl_categories('jobs');
 $jobOpts = pl_entity('job')['fields'];
 $optList = fn($col) => pl_opts($jobOpts[$col]); // value => label, the same choices the backend accepts
@@ -44,7 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'company_description' => $in['company_description'] ?? '', 'contact_mobile' => $in['contact_mobile'] ?? '', 'contact_email' => $in['contact_email'] ?? '',
         ];
         $saveFiles = $_FILES;
-        $r = web_call('jobs_create', array_map(fn($v) => is_string($v) ? trim($v) : $v, $map) + ['csrf' => $_POST['csrf']], true);
+        $r = web_call($editJob ? 'jobs_update' : 'jobs_create', array_map(fn($v) => is_string($v) ? trim($v) : $v, $map) + ['csrf' => $_POST['csrf']] + ($editJob ? ['id' => $editId] : []), true);
         if (!empty($r['error'])) {
             $errors[] = $r['error'];
             if (($r['code'] ?? '') === 'PACKAGE_REQUIRED') $errors[] = 'Buy a Global Job Package, or post it as a Community Job.';
@@ -52,11 +56,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $success = true;
             $it = $r['item'] ?? [];
             $submittedJob = ['title' => $it['job_title'] ?? $map['job_title'], 'company' => $it['company_name'] ?? $map['company_name'],
-                'visibility' => $it['visibility_type'] ?? $map['visibility_type'], 'id' => $it['id'] ?? 0, 'warning' => $r['warning'] ?? ''];
+                'visibility' => $it['visibility_type'] ?? $map['visibility_type'], 'id' => $it['id'] ?? 0, 'warning' => $r['warning'] ?? '', 'message' => $r['message'] ?? ''];
         }
     }
 }
 $jsOld = (!$success && $_SERVER['REQUEST_METHOD'] === 'POST') ? array_diff_key($_POST, ['csrf' => 1]) : [];
+// Edit mode, first visit: fill the form from the saved job (form field names of this design)
+if ($editJob && $_SERVER['REQUEST_METHOD'] !== 'POST') {
+    $d = json_decode((string)($editJob['details'] ?? ''), true) ?: [];
+    $via = $editJob['apply_via'] ?? 'in_app';
+    $jsOld = [
+        'visibility' => $editJob['visibility_type'], 'job_title' => $editJob['job_title'], 'company_name' => $editJob['company_name'],
+        'job_category' => (string)$editJob['category_id'], 'openings' => (string)$editJob['openings'], 'employment_type' => $editJob['employment_type'],
+        'work_mode' => $editJob['work_mode'], 'job_location' => $editJob['location'] ?: trim($editJob['city'] . ', ' . $editJob['state'], ', '),
+        'salary_min' => $editJob['salary_min'] !== null ? (string)(int)$editJob['salary_min'] : '', 'salary_max' => $editJob['salary_max'] !== null ? (string)(int)$editJob['salary_max'] : '',
+        'experience' => $editJob['experience'], 'qualification' => $editJob['qualification'], 'skills_required' => $editJob['required_skills'],
+        'job_summary' => $editJob['description'], 'responsibilities' => $editJob['responsibilities'], 'joining_availability' => $editJob['joining'],
+        'application_email' => $editJob['application_email'], 'application_whatsapp' => $editJob['whatsapp'], 'contact_name' => $editJob['contact_person'],
+        'application_start' => $editJob['application_start_date'], 'application_end' => $editJob['closing_date'],
+        'application_method' => array_values(array_filter([in_array($via, ['whatsapp', 'both'], true) ? 'whatsapp' : null, in_array($via, ['email', 'both'], true) ? 'email' : null])),
+        'required_skills' => $d['core_skills'] ?? '', 'preferred_skills' => $d['preferred_skills'] ?? '', 'additional_requirements' => $d['additional_requirements'] ?? '',
+        'industry' => $d['industry'] ?? '', 'company_website' => $d['company_website'] ?? '', 'company_location' => $d['company_location'] ?? '',
+        'company_description' => $d['company_description'] ?? '', 'contact_mobile' => $d['contact_mobile'] ?? '', 'contact_email' => $d['contact_email'] ?? '',
+    ];
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -510,8 +533,8 @@ $jsOld = (!$success && $_SERVER['REQUEST_METHOD'] === 'POST') ? array_diff_key($
             <section class="pj-success-card">
                 <div class="pj-success-icon"><i class="fa-solid fa-check"></i></div>
                 <span class="pj-section-kicker">JOB RECEIVED</span>
-                <h2>Job Submitted Successfully</h2>
-                <p><strong><?= h($submittedJob['title']) ?></strong> at <?= h($submittedJob['company']) ?> has been submitted.</p><?php if (!empty($submittedJob['warning'])): ?><div class="pj-review-note payment-note"><i class="fa-solid fa-circle-info"></i><span><?= h($submittedJob['warning']) ?></span></div><?php endif; ?>
+                <h2><?= $editJob ? 'Job Updated' : 'Job Submitted Successfully' ?></h2>
+                <p><strong><?= h($submittedJob['title']) ?></strong> at <?= h($submittedJob['company']) ?> has been <?= $editJob ? 'updated' : 'submitted' ?>.<?= $editJob && $submittedJob['message'] ? ' ' . h($submittedJob['message']) : '' ?></p><?php if (!empty($submittedJob['warning'])): ?><div class="pj-review-note payment-note"><i class="fa-solid fa-circle-info"></i><span><?= h($submittedJob['warning']) ?></span></div><?php endif; ?>
                 <div class="pj-review-note"><i class="fa-solid fa-shield-halved"></i><span>Your job is under review and will be published after approval by the community admin.</span></div>
                 <?php if ($submittedJob['visibility'] === 'global'): ?><div class="pj-review-note payment-note"><i class="fa-solid fa-earth-asia"></i><span>This is a Global Job: it will be visible across PeopleLink once approved.</span></div><?php endif; ?>
                 <div class="pj-success-actions"><a class="pj-btn pj-btn-outline" href="post-a-job.php">Post Another Job</a><a class="pj-btn pj-btn-primary" href="my-posted-jobs.php">View My Posted Jobs</a></div>
@@ -524,7 +547,7 @@ $jsOld = (!$success && $_SERVER['REQUEST_METHOD'] === 'POST') ? array_diff_key($
                 <div class="pj-step-note"><i class="fa-solid fa-lock"></i> Your contact details stay in the application workflow</div>
             </div>
 
-            <form id="postJobForm" method="post" enctype="multipart/form-data" action=""><?= web_csrf_field() ?>
+            <form id="postJobForm" method="post" enctype="multipart/form-data" action="<?= $editJob ? 'post-a-job.php?edit=' . (int)$editId : '' ?>"><?= web_csrf_field() ?>
                 <section class="pj-form-card">
                     <div class="pj-card-heading"><span class="pj-card-icon"><i class="fa-solid fa-eye"></i></span><div><h3>Job Visibility</h3><p>Choose who can discover this opportunity.</p></div></div>
                     <div class="pj-visibility-options">
@@ -1100,6 +1123,13 @@ $jsOld = (!$success && $_SERVER['REQUEST_METHOD'] === 'POST') ? array_diff_key($
 </footer>
 
 <script src="header.js"></script>
+<?php if ($editJob && !$success): ?><script>
+// edit mode: change the page wording
+document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('.pj-form-heading h2').forEach(function (el) { el.textContent = 'Edit Job'; });
+  var b = document.querySelector('button[name="submit_job"]'); if (b) b.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Save Changes';
+});
+</script><?php endif; ?>
 <?php if ($jsOld): ?><script>
 // refill the form after an error so nothing typed is lost
 document.addEventListener('DOMContentLoaded', function () {
