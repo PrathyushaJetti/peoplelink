@@ -1,3 +1,21 @@
+<?php
+// Apply to Job (live: job from jobs_details, application sent with the backend action jobs_apply)
+require_once dirname(__DIR__) . '/_web.php';
+web_require_login();
+$ajId = (int)($_GET['job'] ?? $_GET['jobId'] ?? $_GET['id'] ?? 0);
+$ajRes = $ajId ? web_call('jobs_details', ['id' => $ajId]) : ['error' => 'missing'];
+if (!empty($ajRes['error'])) { flash('That job is not available.', 'error'); header('Location: job-search-results.php'); exit; }
+$aj = web_job_card($ajRes['item']);
+if (!empty($aj['applied'])) { flash('You have already applied for this job.', 'success'); header('Location: job-details.php?id=' . $ajId . '#apply'); exit; }
+if (empty($aj['accepting_applications'])) { flash('This job is no longer accepting applications.', 'error'); header('Location: job-details.php?id=' . $ajId); exit; }
+$ajSaved = pl_job_saved_resume($webUid);
+$ajJob = ['id' => (int)$aj['id'], 'title' => $aj['title'], 'company' => $aj['company'], 'location' => $aj['location'], 'type' => $aj['job_type'],
+    'visibility' => $aj['scope'] === 'global' ? 'Global Job' : 'Community Job', 'closingDate' => $aj['closing_date'] ? date('d M Y', strtotime($aj['closing_date'])) : 'Open',
+    'whatsappNumber' => '', 'employerEmail' => '',
+    // In-app applications always reach the employer; these cards show the extra ways the employer accepts.
+    'methods' => ['whatsapp' => in_array('whatsapp', $aj['apply_methods'], true), 'email' => true]];
+$ajProfile = ['fullName' => $webUser['name'] ?? '', 'mobile' => $webUser['phone'] ?? '', 'email' => $webUser['email'] ?? '', 'qualification' => '', 'experience' => '', 'currentLocation' => $webUser['city'] ?? ''];
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -422,8 +440,7 @@
 
                         <select id="ajSavedResume">
                             <option value="">Select a resume</option>
-                            <option value="resume-001">My_Resume.pdf</option>
-                            <option value="resume-002">Updated_CV.docx</option>
+                            <?php if ($ajSaved): ?><option value="saved" selected><?= h($ajSaved['name'] ?? 'My resume') ?></option><?php endif; ?>
                         </select>
 
                     </div>
@@ -533,7 +550,7 @@
                 <!-- FORM ACTIONS -->
                 <div class="aj-submit-row">
 
-                    <a href="jobs.html" class="aj-back-link">
+                    <a href="jobs-home.php" class="aj-back-link">
                         <i class="fa-solid fa-arrow-left"></i>
                         Back to Jobs
                     </a>
@@ -624,11 +641,11 @@
 
             <div class="aj-success-actions">
 
-                <a href="my-applications.html" class="aj-success-primary">
+                <a href="my-applications.php" class="aj-success-primary">
                     View My Applications
                 </a>
 
-                <a href="jobs.html" class="aj-success-secondary">
+                <a href="jobs-home.php" class="aj-success-secondary">
                     Back to Jobs
                 </a>
 
@@ -716,7 +733,7 @@
                 <ul>
                     <li><a href="#communityList">Matrimony &amp; Relationships</a></li>
                     <li><a href="#platformServices">Family &amp; Community</a></li>
-                    <li><a href="jobs.html">Jobs &amp; Career</a></li>
+                    <li><a href="jobs-home.php">Jobs &amp; Career</a></li>
                     <li><a href="#platformServices">Professionals &amp; Businesses</a></li>
                     <li><a href="#platformServices">Marketplace</a></li>
                     <li><a href="#events">Community Events</a></li>
@@ -880,7 +897,7 @@
 ====================================================== -->
 
 <script src="header.js"></script>
-<script src="apply-to-job.js"></script>
+<?= web_js_boot() ?><script>window.AJ_JOB=<?= json_encode($ajJob, JSON_HEX_TAG | JSON_HEX_AMP) ?>;window.AJ_PROFILE=<?= json_encode($ajProfile, JSON_HEX_TAG | JSON_HEX_AMP) ?>;</script><script src="apply-to-job.js?v=2"></script>
 
 <!-- FOOTER YEAR AND BACK-TO-TOP FALLBACK -->
 <script>

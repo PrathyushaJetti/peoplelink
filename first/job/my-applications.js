@@ -310,7 +310,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const viewJobLink = $("#maDetailViewJob");
 
         viewJobLink.href =
-            "job-details.html?id=" +
+            "job-details.php?id=" +
             encodeURIComponent(getData(card, "id").replace("APP-", "JOB-"));
 
         openModal(detailsModal, trigger);

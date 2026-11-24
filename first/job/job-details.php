@@ -1,70 +1,53 @@
 <?php
-// Page 38 – Job Details
-// Demo-ready sample data. Connect $jobs to your PeopleLink jobs table before production use.
-if (session_status() === PHP_SESSION_NONE) { session_start(); }
+// Page 38 – Job Details (live data: matrimoney/includes/jobs_api.php — same backend as the mobile app)
+require_once dirname(__DIR__) . '/_web.php';
 
-$jobs = [
-    101 => [
-        'id'=>101, 'title'=>'PHP Web Developer', 'company'=>'Deep Web Solution',
-        'logo'=>'', 'location'=>'Dehradun, Uttarakhand', 'job_type'=>'Full Time',
-        'work_mode'=>'Hybrid', 'experience'=>'1–3 Years', 'salary_min'=>18000,
-        'salary_max'=>35000, 'posted'=>'2026-10-08', 'scope'=>'community',
-        'community'=>'Arya Vysya', 'category'=>'Information Technology',
-        'company_description'=>'A digital solutions company working on websites, web applications and online growth solutions.',
-        'website'=>'https://deepwebsolution.online', 'role'=>'Build, improve and maintain responsive websites and web applications for client projects.',
-        'responsibilities'=>[
-            'Develop and maintain PHP and MySQL-based web applications.',
-            'Build responsive pages using HTML, CSS, JavaScript and Bootstrap.',
-            'Troubleshoot issues, improve performance and maintain code quality.',
-            'Coordinate with the design and project teams to deliver milestones.'
-        ],
-        'skills'=>['Core PHP','MySQL','HTML5','CSS3','JavaScript','Bootstrap','Git basics'],
-        'qualification'=>'BCA, B.Tech, MCA or equivalent practical experience',
-        'preferred'=>['WordPress','Basic SEO','Laravel familiarity'],
-        'openings'=>2, 'employment_type'=>'Full Time', 'work_location'=>'Hybrid — Dehradun, Uttarakhand',
-        'joining'=>'Within 15–30 days preferred', 'email'=>'careers@example.com',
-        'whatsapp'=>'919876543210', 'status'=>'open',
-        'similar'=>[
-            ['title'=>'WordPress Developer','company'=>'WebNest Technologies','location'=>'Remote, India','type'=>'Community Job','id'=>105],
-            ['title'=>'Frontend Developer','company'=>'PixelCraft Studio','location'=>'Dehradun, Uttarakhand','type'=>'Global Job','id'=>107],
-            ['title'=>'Junior PHP Developer','company'=>'TechBridge Services','location'=>'Noida, Uttar Pradesh','type'=>'Global Job','id'=>108],
-        ]
-    ],
-    102 => [
-        'id'=>102, 'title'=>'Digital Marketing Executive', 'company'=>'GrowthPath Media',
-        'logo'=>'', 'location'=>'Delhi, India', 'job_type'=>'Full Time',
-        'work_mode'=>'On-site', 'experience'=>'0–2 Years', 'salary_min'=>15000,
-        'salary_max'=>28000, 'posted'=>'2026-10-07', 'scope'=>'global',
-        'community'=>'', 'category'=>'Marketing & Communications',
-        'company_description'=>'A marketing team focused on helping organisations improve their digital visibility and campaign performance.',
-        'website'=>'', 'role'=>'Support search engine optimisation, digital campaigns and performance reporting.',
-        'responsibilities'=>[
-            'Assist with SEO research and content optimisation.',
-            'Track campaign metrics and prepare reports.',
-            'Coordinate social media and digital content schedules.'
-        ],
-        'skills'=>['SEO basics','Content writing','Google Analytics','Communication'],
-        'qualification'=>'Any graduate with an interest in digital marketing',
-        'preferred'=>['Google Ads','Social media management'],
-        'openings'=>1, 'employment_type'=>'Full Time', 'work_location'=>'On-site — Delhi, India',
-        'joining'=>'As soon as possible', 'email'=>'', 'whatsapp'=>'', 'status'=>'open',
-        'similar'=>[
-            ['title'=>'SEO Executive','company'=>'SearchWorks','location'=>'Delhi, India','type'=>'Global Job','id'=>109],
-            ['title'=>'Content Marketing Associate','company'=>'GrowthPath Media','location'=>'Remote, India','type'=>'Global Job','id'=>110],
-        ]
-    ],
-];
+$id = (int)filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
+$back = 'job-details.php?id=' . $id;
 
-$id = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
-if (!$id || !isset($jobs[$id])) { $id = 101; }
-$job = $jobs[$id];
+// Apply in PeopleLink (resume upload) — handled by the backend action jobs_apply
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['apply_now'])) {
+    web_require_login();
+    $_POST['job_id'] = $id; $_POST['method'] = 'in_app';
+    web_post('jobs_apply', $back . '#apply', $back . '#apply');
+}
 
-function h($value) { return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8'); }
+$res = $id ? web_call('jobs_details', ['id' => $id]) : ['error' => 'Job not found.'];
+if (!empty($res['error'])) {
+    http_response_code(404);
+    $needLogin = !empty($res['login']) || !$webUser;
+    $msg = $needLogin ? 'Please login to view this job. Community jobs are visible to members of that community.' : 'This job is not available. It may have been removed or belong to another community.';
+    echo '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Job not found | PeopleLink</title></head>'
+        . '<body style="font-family:Inter,system-ui,sans-serif;display:grid;place-items:center;min-height:90vh;margin:0;background:#f5f8fc"><div style="text-align:center;max-width:460px;padding:24px">'
+        . '<h1 style="color:#0b2545">Job not found</h1><p style="color:#5b6b7f">' . h($msg) . '</p>'
+        . '<p><a href="job-search-results.php" style="color:#0b6fb8;font-weight:600">Browse all jobs</a>'
+        . ($needLogin ? ' · <a href="' . h(DASHBOARD_URL . 'login.php?next=' . urlencode($_SERVER['REQUEST_URI'] ?? '')) . '" style="color:#0b6fb8;font-weight:600">Login</a>' : '') . '</p></div></body></html>';
+    exit;
+}
+$j = web_job_card($res['item']);
+$d = is_array($j['details'] ?? null) ? $j['details'] : [];
+$lines = fn($s) => array_values(array_filter(array_map('trim', preg_split('/\r?\n/', (string)$s))));
+$job = array_merge($j, [
+    'logo' => $j['company_logo'] ?? '',
+    'category' => $j['category_name'] ?? '',
+    'company_description' => $d['company_description'] ?? '',
+    'website' => $d['company_website'] ?? '',
+    'role' => $j['description'] ?? '',
+    'responsibilities' => $lines($j['responsibilities'] ?? ''),
+    'skills' => array_values(array_filter(array_map('trim', explode(',', (string)($j['required_skills'] ?? ''))))),
+    'preferred' => $lines($d['preferred_skills'] ?? $d['additional_requirements'] ?? ''),
+    'work_location' => trim(($j['work_mode'] ?? '') . ' — ' . $j['location'], ' —'),
+    'email' => $j['application_email'] ?? '',
+    'whatsapp' => $j['whatsapp'] ?? '',
+    'status' => !empty($j['accepting_applications']) ? 'open' : 'closed',
+]);
+
 function salaryText($job) {
+    if (!empty($job['salary_text'])) return $job['salary_text'];
     if (empty($job['salary_min']) && empty($job['salary_max'])) return 'Not disclosed';
     return '₹'.number_format((int)$job['salary_min']).' – ₹'.number_format((int)$job['salary_max']).' / month';
 }
-function dateText($date) { return date('d M Y', strtotime($date)); }
+function dateText($date) { return $date ? date('d M Y', strtotime($date)) : ''; }
 function bulletList($items) {
     if (!$items) return '<p class="muted">Not specified by the employer.</p>';
     $html = '<ul class="detail-bullets">';
@@ -72,15 +55,22 @@ function bulletList($items) {
     return $html.'</ul>';
 }
 
-$alreadyApplied = !empty($_SESSION['applied_jobs']) && in_array($job['id'], $_SESSION['applied_jobs']);
+$alreadyApplied = !empty($job['applied']);
+$isOwn = !empty($job['is_own']);
 $isClosed = $job['status'] !== 'open';
-$waNumber = preg_replace('/\D+/', '', $job['whatsapp'] ?? '');
+$methods = (array)($job['apply_methods'] ?? []);
+$waNumber = in_array('whatsapp', $methods, true) ? preg_replace('/\D+/', '', $job['whatsapp'] ?? '') : '';
 $waMessage = rawurlencode('Hello, I am interested in the '.$job['title'].' position at '.$job['company'].'. Please share the next steps.');
 $whatsappUrl = $waNumber ? 'https://wa.me/'.$waNumber.'?text='.$waMessage : '';
 $emailSubject = rawurlencode('Application for '.$job['title']);
 $emailBody = rawurlencode("Hello ".$job['company'].",\n\nI would like to apply for the ".$job['title']." position.\n\nPlease find my resume attached.\n\nRegards,");
-$emailUrl = !empty($job['email']) ? 'mailto:'.$job['email'].'?subject='.$emailSubject.'&body='.$emailBody : '';
-$similarJobs = $job['similar'] ?? [];
+$emailUrl = (in_array('email', $methods, true) && !empty($job['email'])) ? 'mailto:'.$job['email'].'?subject='.$emailSubject.'&body='.$emailBody : '';
+
+// Similar jobs: same category, newest first (not this one)
+$_REQUEST['per'] = 4; $_REQUEST['page'] = 1;
+$sim = $job['category_id'] ? pl_jobs_list(web_ctx(), ['category_id' => $job['category_id'], 'sort' => 'latest'], 't.id<>?', [$job['id']]) : ['items' => []];
+$similarJobs = array_map(fn($s) => ['id' => $s['id'], 'title' => $s['title'], 'company' => $s['company'], 'location' => $s['location'],
+    'type' => $s['scope'] === 'global' ? 'Global Job' : 'Community Job'], array_slice(array_map('web_job_card', $sim['items']), 0, 3));
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -518,6 +508,7 @@ $similarJobs = $job['similar'] ?? [];
 </header>
 
 <main class="pl-job-details">
+<?= web_flash_html() ?>
     <section class="jd-hero">
         <div class="jd-container">
             <a class="back-link" href="job-search-results.php"><i class="fa-solid fa-arrow-left"></i> Back to Job Results</a>
@@ -556,7 +547,7 @@ $similarJobs = $job['similar'] ?? [];
     <section class="jd-container jd-layout">
         <div class="jd-content">
             <?php if ($alreadyApplied): ?>
-                <div class="status-banner applied"><i class="fa-solid fa-circle-check"></i><div><strong>Applied</strong><span>Your session records this job as applied.</span></div></div>
+                <div class="status-banner applied"><i class="fa-solid fa-circle-check"></i><div><strong>Applied</strong><span>You have applied for this job<?= !empty($job['application_status']) ? ' — status: ' . h(ucwords(str_replace('_', ' ', $job['application_status']))) : '' ?>. <a href="my-applications.php">View my applications</a></span></div></div>
             <?php elseif ($isClosed): ?>
                 <div class="status-banner closed"><i class="fa-solid fa-circle-info"></i><div><strong>This Job is No Longer Accepting Applications</strong><span>You can still review the role details below.</span></div></div>
             <?php endif; ?>
@@ -594,14 +585,14 @@ $similarJobs = $job['similar'] ?? [];
                     <?php if ($emailUrl): ?><a class="apply-option email" href="<?= h($emailUrl) ?>"><span class="apply-option-icon"><i class="fa-regular fa-envelope"></i></span><span><strong>Apply via Email</strong><small>Open your email application draft</small></span><i class="fa-solid fa-arrow-up-right-from-square option-arrow"></i></a>
                     <?php else: ?><div class="apply-option unavailable"><span class="apply-option-icon"><i class="fa-regular fa-envelope"></i></span><span><strong>Apply via Email</strong><small>Employer email address is not configured.</small></span></div><?php endif; ?>
                 </div>
-                <form class="resume-form" id="resumeForm" action="job-application-submit.php" method="post" enctype="multipart/form-data">
+                <?php if ($isOwn): ?><p class="muted">This is your job post. <a href="my-posted-jobs.php">Manage your posted jobs</a>.</p><?php elseif (!$webUser): ?><p class="muted"><a href="<?= h(DASHBOARD_URL . 'login.php?next=' . urlencode($_SERVER['REQUEST_URI'] ?? '')) ?>">Login</a> to apply in PeopleLink with your resume.</p><?php else: ?><form class="resume-form" id="resumeForm" action="" method="post" enctype="multipart/form-data"><?= web_csrf_field() ?>
                     <input type="hidden" name="job_id" value="<?= (int)$job['id'] ?>">
                     <div class="resume-heading"><div><h3>Attach Your Resume</h3><p>PDF, DOC or DOCX · Maximum 5 MB</p></div><i class="fa-solid fa-file-arrow-up"></i></div>
                     <label class="resume-drop" for="resumeFile"><i class="fa-regular fa-folder-open"></i><strong>Choose resume file</strong><span>Browse your device</span><input type="file" id="resumeFile" name="resume" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"><small id="resumeFileName">No file selected</small></label>
                     <div class="resume-buttons"><button class="btn btn-outline" type="button" id="replaceResume" hidden>Replace Resume</button><button class="btn btn-primary" type="submit" name="apply_now" value="1">Apply Now <i class="fa-solid fa-arrow-right"></i></button></div>
-                    <p class="form-note">Resume submission requires the server-side application handler and secure upload validation to be configured.</p>
-                </form>
-                <?php elseif ($alreadyApplied): ?><p class="muted">You have already applied to this job in this session.</p>
+                    <p class="form-note">Your application and resume are sent securely to the employer through PeopleLink.</p>
+                </form><?php endif; ?>
+                <?php elseif ($alreadyApplied): ?><p class="muted">You have already applied to this job. <a href="my-applications.php">Track your application</a>.</p>
                 <?php else: ?><p class="muted">This job is closed and is no longer accepting applications.</p><?php endif; ?>
             </section>
         </div>
@@ -612,7 +603,7 @@ $similarJobs = $job['similar'] ?? [];
                 <h3>Take the next step</h3>
                 <p>Keep this opportunity handy or share it with someone who may be a good fit.</p>
                 <button class="btn btn-primary side-action" id="applyNowButton" type="button" <?= ($isClosed || $alreadyApplied)?'disabled':'' ?>>Apply Now <i class="fa-solid fa-arrow-right"></i></button>
-                <button class="btn btn-outline side-action" id="saveJobButton" type="button"><i class="fa-regular fa-bookmark"></i> Save Job</button>
+                <button class="btn btn-outline side-action<?= !empty($job['saved']) ? ' is-saved' : '' ?>" id="saveJobButton" type="button" data-job-id="<?= (int)$job['id'] ?>"><?= !empty($job['saved']) ? '<i class="fa-solid fa-bookmark"></i> Saved' : '<i class="fa-regular fa-bookmark"></i> Save Job' ?></button>
                 <button class="btn btn-outline side-action" id="shareJobButton" type="button"><i class="fa-solid fa-share-nodes"></i> Share Job</button>
                 <div class="share-feedback" id="shareFeedback" role="status" aria-live="polite"></div>
             </div>
@@ -1101,7 +1092,8 @@ $similarJobs = $job['similar'] ?? [];
 </footer>
 
 <script src="header.js"></script>
-<script src="job-details.js"></script>
+<?= web_js_boot() ?>
+<script src="job-details.js?v=2"></script>
 <script src="js/jobs-global.js"></script>
 </body>
 </html>

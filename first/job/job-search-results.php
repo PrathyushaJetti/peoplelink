@@ -1,7 +1,6 @@
 <?php
-// Page 37 – Job Search Results
-// Demo-ready page. Replace the sample $jobs array with your database query when connecting to your jobs table.
-if (session_status() === PHP_SESSION_NONE) { session_start(); }
+// Page 37 – Job Search Results (live data: same backend as the mobile app, matrimoney/includes/jobs_api.php)
+require_once dirname(__DIR__) . '/_web.php';
 
 $keyword = trim($_GET['keyword'] ?? '');
 $location = trim($_GET['location'] ?? '');
@@ -9,80 +8,22 @@ $jobType = trim($_GET['job_type'] ?? '');
 $jobScope = trim($_GET['scope'] ?? 'all'); // all, community, global
 $sort = trim($_GET['sort'] ?? 'latest');
 
-$jobs = [
-    [
-        'id'=>101, 'title'=>'PHP Web Developer', 'company'=>'Deep Web Solution',
-        'location'=>'Dehradun, Uttarakhand', 'experience'=>'1–3 Years',
-        'qualification'=>'BCA / B.Tech / Relevant Experience', 'job_type'=>'Full Time',
-        'work_mode'=>'Hybrid', 'salary_min'=>18000, 'salary_max'=>35000,
-        'posted'=>'2026-10-08', 'scope'=>'community', 'community'=>'Arya Vysya',
-        'relevance'=>95, 'description'=>'Develop and maintain responsive PHP and MySQL websites.'
-    ],
-    [
-        'id'=>102, 'title'=>'Digital Marketing Executive', 'company'=>'GrowthPath Media',
-        'location'=>'Delhi, India', 'experience'=>'0–2 Years',
-        'qualification'=>'Any Graduate', 'job_type'=>'Full Time',
-        'work_mode'=>'On-site', 'salary_min'=>15000, 'salary_max'=>28000,
-        'posted'=>'2026-10-07', 'scope'=>'global', 'community'=>'',
-        'relevance'=>82, 'description'=>'Support SEO, campaign reporting and digital marketing activities.'
-    ],
-    [
-        'id'=>103, 'title'=>'UI/UX Designer', 'company'=>'PixelCraft Studio',
-        'location'=>'Remote, India', 'experience'=>'2–4 Years',
-        'qualification'=>'Design Degree or Portfolio', 'job_type'=>'Contract',
-        'work_mode'=>'Remote', 'salary_min'=>30000, 'salary_max'=>55000,
-        'posted'=>'2026-10-06', 'scope'=>'community', 'community'=>'Reddy',
-        'relevance'=>90, 'description'=>'Design clear, accessible web and mobile experiences.'
-    ],
-    [
-        'id'=>104, 'title'=>'Customer Support Associate', 'company'=>'ConnectOne Services',
-        'location'=>'Noida, Uttar Pradesh', 'experience'=>'Fresher',
-        'qualification'=>'12th Pass / Graduate', 'job_type'=>'Full Time',
-        'work_mode'=>'On-site', 'salary_min'=>14000, 'salary_max'=>22000,
-        'posted'=>'2026-10-05', 'scope'=>'global', 'community'=>'',
-        'relevance'=>75, 'description'=>'Assist customers and maintain accurate support records.'
-    ],
-    [
-        'id'=>105, 'title'=>'WordPress Developer', 'company'=>'WebNest Technologies',
-        'location'=>'Remote, India', 'experience'=>'1–3 Years',
-        'qualification'=>'Any Graduate / Relevant Experience', 'job_type'=>'Part Time',
-        'work_mode'=>'Remote', 'salary_min'=>20000, 'salary_max'=>40000,
-        'posted'=>'2026-10-04', 'scope'=>'community', 'community'=>'Kamma',
-        'relevance'=>88, 'description'=>'Build, customise and maintain WordPress websites.'
-    ],
-    [
-        'id'=>106, 'title'=>'Accounts Assistant', 'company'=>'Shree Enterprises',
-        'location'=>'Jaipur, Rajasthan', 'experience'=>'1–2 Years',
-        'qualification'=>'B.Com / Relevant Experience', 'job_type'=>'Full Time',
-        'work_mode'=>'On-site', 'salary_min'=>16000, 'salary_max'=>25000,
-        'posted'=>'2026-10-02', 'scope'=>'global', 'community'=>'',
-        'relevance'=>70, 'description'=>'Maintain invoices, records and basic accounting reports.'
-    ],
-];
+// Community jobs need a selected community; without one, only global jobs are shown.
+if (!$webCid && $jobScope !== 'global') $jobScope = 'global';
+$apiSort = ['latest' => 'latest', 'relevant' => 'relevant', 'salary_high' => 'salary_desc', 'salary_low' => 'salary_asc'][$sort] ?? 'latest';
+$filters = ['keyword' => $keyword, 'location' => $location, 'job_type' => $jobType, 'sort' => $apiSort];
+if (in_array($jobScope, ['community', 'global'], true)) $filters['visibility'] = $jobScope;
+$_REQUEST['per'] = 50; $_REQUEST['page'] = 1; // first 50 matches; 4 shown, the rest behind "Load More"
+$result = pl_jobs_list(web_ctx(), $filters);
+$filteredJobs = array_map('web_job_card', $result['items']);
 
-$filteredJobs = array_values(array_filter($jobs, function ($job) use ($keyword, $location, $jobType, $jobScope) {
-    $haystack = strtolower($job['title'].' '.$job['company'].' '.$job['description'].' '.$job['qualification']);
-    if ($keyword !== '' && strpos($haystack, strtolower($keyword)) === false) return false;
-    if ($location !== '' && strpos(strtolower($job['location']), strtolower($location)) === false) return false;
-    if ($jobType !== '' && strtolower($job['job_type']) !== strtolower($jobType)) return false;
-    if ($jobScope !== 'all' && $job['scope'] !== $jobScope) return false;
-    return true;
-}));
-
-usort($filteredJobs, function ($a, $b) use ($sort) {
-    if ($sort === 'relevant') return $b['relevance'] <=> $a['relevance'];
-    if ($sort === 'salary_high') return $b['salary_max'] <=> $a['salary_max'];
-    if ($sort === 'salary_low') return $a['salary_min'] <=> $b['salary_min'];
-    return strcmp($b['posted'], $a['posted']);
-});
-
-function h($value) { return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8'); }
 function moneyRange($min, $max) {
     if (!$min && !$max) return 'Salary not disclosed';
+    if (!$min || !$max) return '₹' . number_format((int)($min ?: $max)) . ' / month';
     return '₹'.number_format((int)$min).' – ₹'.number_format((int)$max).' / month';
 }
-function dateLabel($date) { return date('d M Y', strtotime($date)); }
-$totalJobs = count($filteredJobs);
+function dateLabel($date) { return $date ? date('d M Y', strtotime($date)) : ''; }
+$totalJobs = (int)$result['total'];
 $displayJobs = array_slice($filteredJobs, 0, 4);
 ?>
 <!DOCTYPE html>
@@ -521,6 +462,7 @@ $displayJobs = array_slice($filteredJobs, 0, 4);
 </header>
 
 <main class="pl-jobs-page">
+<?= web_flash_html() ?>
     <section class="jobs-hero">
         <div class="jobs-container">
             <div class="hero-copy">
@@ -585,7 +527,7 @@ $displayJobs = array_slice($filteredJobs, 0, 4);
                         <h3><?= h($job['title']) ?></h3>
                         <p class="company-name"><?= h($job['company']) ?></p>
                     </div>
-                    <button type="button" class="save-job" aria-label="Save <?= h($job['title']) ?>" data-job-id="<?= (int)$job['id'] ?>"><i class="fa-regular fa-bookmark"></i><span>Save Job</span></button>
+                    <button type="button" class="save-job<?= !empty($job['saved']) ? ' is-saved' : '' ?>" aria-pressed="<?= !empty($job['saved']) ? 'true' : 'false' ?>" aria-label="Save <?= h($job['title']) ?>" data-job-id="<?= (int)$job['id'] ?>"><?= !empty($job['saved']) ? '<i class="fa-solid fa-bookmark"></i><span>Saved</span>' : '<i class="fa-regular fa-bookmark"></i><span>Save Job</span>' ?></button>
                 </div>
                 <div class="job-meta">
                     <span><i class="fa-solid fa-location-dot"></i><?= h($job['location']) ?></span>
@@ -1081,7 +1023,8 @@ $displayJobs = array_slice($filteredJobs, 0, 4);
 </footer>
 
 <script src="header.js"></script>
-<script src="job-search-results.js"></script>
+<?= web_js_boot() ?>
+<script src="job-search-results.js?v=2"></script>
 <script src="js/jobs-global.js"></script>
 </body>
 </html>

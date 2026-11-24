@@ -79,8 +79,9 @@ document.addEventListener("DOMContentLoaded", function () {
     const requestedPackage = params.get("package") || "premium";
     const mode = params.get("mode") || "purchase";
 
+    // live package from the server (first/job/global-job-package-details.php)
     let selectedPackage =
-        packages[requestedPackage] || packages.premium;
+        window.P45_PACKAGE || packages[requestedPackage] || packages.premium;
 
     // Formatting helpers.
     const formatINR = (amount) =>
@@ -165,14 +166,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Example current subscription data.
     // Replace this with the authenticated user's database record.
-    const currentPackage = {
-        name: "Premium Global Package",
-        used: 8,
-        total: 25,
-        expiry: "31 Dec 2026"
-    };
+    const currentPackage = window.P45_CURRENT;
 
     function renderCurrentUsage() {
+        if (!currentPackage) { if ($("p45CurrentUsage")) $("p45CurrentUsage").hidden = true; return; }
         $("p45CurrentName").textContent =
             currentPackage.name;
 
@@ -254,19 +251,49 @@ document.addEventListener("DOMContentLoaded", function () {
          * backend verifies the payment with the gateway.
          */
 
-        console.log("Checkout details validated:", {
-            packageId: requestedPackage,
-            mode: mode,
-            paymentMethod: paymentMethod.value,
-            employer: employer
-        });
-
-        alert(
-            "Your details are valid. The payment gateway is not " +
-            "connected yet. Configure your backend and payment " +
-            "provider before accepting purchases."
-        );
+        if (!window.PL || !PL.requireLogin()) return;
+        startPayment(employer);
     });
+
+    // Real payment: backend creates the Razorpay order (price from the database), Razorpay collects, backend verifies.
+    function loadRazorpay() {
+        return new Promise((resolve, reject) => {
+            if (typeof window.Razorpay === "function") return resolve();
+            const s = document.createElement("script");
+            s.src = "https://checkout.razorpay.com/v1/checkout.js";
+            s.onload = resolve; s.onerror = () => reject(new Error("Payment window could not load."));
+            document.head.appendChild(s);
+        });
+    }
+    const payButtons = [$("p45PayButton"), $("p45DesktopPayButton")].filter(Boolean);
+    function setBusy(on) { payButtons.forEach(b => { b.disabled = on; }); }
+    async function startPayment(employer) {
+        setBusy(true);
+        try {
+            const order = await PL.post("jobs_package_purchase", { package_id: selectedPackage.id });
+            if (!order.ok) { alert(order.error || "Payment could not be started."); return; }
+            await loadRazorpay();
+            const rz = new window.Razorpay({
+                key: order.key_id, order_id: order.order_id, amount: order.amount, currency: order.currency || "INR",
+                name: "PeopleLink", description: selectedPackage.name,
+                prefill: { name: employer.name, email: employer.email, contact: employer.mobile },
+                notes: { company: employer.company },
+                handler: async function (resp) {
+                    const v = await PL.post("jobs_payment_verify", resp);
+                    if (!v.ok) { alert(v.error || "Payment could not be verified. If money was deducted it will update automatically."); return; }
+                    const today = new Date(); const exp = new Date(); exp.setDate(exp.getDate() + Number(selectedPackage.validity || 0));
+                    window.showVerifiedPackageSuccess({ verified: true, transactionId: v.txn_code || order.txn_code, packageName: selectedPackage.name,
+                        amountPaid: selectedPackage.price, activationDate: formatDate(today), expiryDate: formatDate(exp),
+                        postsAvailable: v.remaining_global_posts != null ? v.remaining_global_posts : selectedPackage.posts });
+                },
+                modal: { ondismiss: function () { setBusy(false); } }
+            });
+            rz.on("payment.failed", function (e) { alert((e && e.error && e.error.description) || "Payment failed. Please try again."); });
+            rz.open();
+        } catch (err) {
+            if (err && err.message !== "login") alert(err.message || "Payment could not be started.");
+        } finally { setBusy(false); }
+    }
 
     /*
      * Call this function from your verified payment-success

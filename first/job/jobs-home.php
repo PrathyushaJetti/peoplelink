@@ -1,3 +1,17 @@
+<?php
+// Jobs Home (live: latest approved jobs from the jobs backend; filters on this page work on these jobs)
+require_once dirname(__DIR__) . '/_web.php';
+$_REQUEST['per'] = 24; $_REQUEST['page'] = 1;
+$latest = pl_jobs_list(web_ctx(), ['sort' => 'latest']);
+$homeJobs = array_map('web_job_card', $latest['items']);
+$catSlug = ['it-software' => 'it', 'sales-marketing' => 'sales', 'banking-finance' => 'finance', 'healthcare' => 'healthcare', 'education' => 'education',
+    'engineering' => 'engineering', 'administration' => 'administration', 'hr' => 'hr', 'hospitality' => 'hospitality', 'government' => 'government',
+    'work-from-home' => 'remote', 'internship' => 'internship'];
+$catById = [];
+foreach (pl_categories('jobs') as $c) $catById[(int)$c['id']] = $catSlug[$c['slug'] ?? ''] ?? 'other';
+$expBucket = fn($e) => ['fresher' => 'fresher', '0-1 years' => '0-2', '1-3 years' => '0-2', '3-5 years' => '2-5', '5-10 years' => '5+', '10+ years' => '5+'][strtolower(trim((string)$e))] ?? '';
+$logoColors = ['plj-logo-blue', 'plj-logo-green', 'plj-logo-orange', 'plj-logo-purple'];
+?>
 <!DOCTYPE html>
 <html lang="en">
 
@@ -455,7 +469,7 @@
                     <a href="#plj-search" class="plj-btn plj-btn-primary">
                         <i class="bi bi-search"></i> Explore Jobs
                     </a>
-                    <a href="post-job.php" class="plj-btn plj-btn-outline">
+                    <a href="post-a-job.php" class="plj-btn plj-btn-outline">
                         <i class="bi bi-plus-circle"></i> Post a Job
                     </a>
                 </div>
@@ -620,214 +634,35 @@
 
             <div class="plj-listing-label">
                 <span id="pljScopeLabel"><i class="bi bi-people-fill"></i> Community Jobs</span>
-                <small>Sample listings for design preview</small>
+                <small>Newest approved jobs</small>
             </div>
 
             <div class="plj-job-grid" id="pljJobGrid">
 
-                <article class="plj-job-card"
-                         data-scope="community"
-                         data-title="PHP Web Developer"
-                         data-company="Digital Solutions India"
-                         data-location="Dehradun"
-                         data-experience="0-2"
-                         data-category="it"
-                         data-skills="php mysql html css javascript"
-                         data-qualification="BCA, MCA or relevant experience"
-                         data-salary="₹3–6 LPA"
-                         data-date="Recently posted">
-                    <div class="plj-job-top">
-                        <span class="plj-company-logo plj-logo-blue">DS</span>
-                        <button type="button" class="plj-save-btn"
-                                aria-label="Save PHP Web Developer job"
-                                aria-pressed="false"><i class="bi bi-bookmark"></i></button>
-                    </div>
-                    <span class="plj-job-tag plj-community-tag">Community Job</span>
-                    <h3>PHP Web Developer</h3>
-                    <p class="plj-company"><i class="bi bi-building"></i> Digital Solutions India</p>
-                    <div class="plj-job-meta">
-                        <span><i class="bi bi-geo-alt"></i> Dehradun</span>
-                        <span><i class="bi bi-briefcase"></i> 0–2 Years</span>
-                        <span><i class="bi bi-mortarboard"></i> BCA / MCA</span>
-                    </div>
-                    <div class="plj-salary"><strong>₹3–6 LPA</strong><small>Sample salary</small></div>
-                    <div class="plj-job-footer">
-                        <small><i class="bi bi-clock"></i> Recently posted</small>
-                        <button type="button" class="plj-view-btn" data-view-job>
-                            View Details <i class="bi bi-arrow-up-right"></i>
-                        </button>
-                    </div>
-                </article>
-
-                <article class="plj-job-card"
-                         data-scope="global"
-                         data-title="Digital Marketing Executive"
-                         data-company="GrowthBridge Media"
-                         data-location="Remote"
-                         data-experience="0-2"
-                         data-category="sales"
-                         data-skills="seo social media digital marketing content"
-                         data-qualification="Graduate or equivalent experience"
-                         data-salary="₹2.5–5 LPA"
-                         data-date="Recently posted">
-                    <div class="plj-job-top">
-                        <span class="plj-company-logo plj-logo-orange">GB</span>
-                        <button type="button" class="plj-save-btn"
-                                aria-label="Save Digital Marketing Executive job"
-                                aria-pressed="false"><i class="bi bi-bookmark"></i></button>
-                    </div>
-                    <span class="plj-job-tag plj-global-tag">Global Job</span>
-                    <h3>Digital Marketing Executive</h3>
-                    <p class="plj-company"><i class="bi bi-building"></i> GrowthBridge Media</p>
-                    <div class="plj-job-meta">
-                        <span><i class="bi bi-geo-alt"></i> Remote</span>
-                        <span><i class="bi bi-briefcase"></i> 0–2 Years</span>
-                        <span><i class="bi bi-mortarboard"></i> Graduate</span>
-                    </div>
-                    <div class="plj-salary"><strong>₹2.5–5 LPA</strong><small>Sample salary</small></div>
-                    <div class="plj-job-footer">
-                        <small><i class="bi bi-clock"></i> Recently posted</small>
-                        <button type="button" class="plj-view-btn" data-view-job>
-                            View Details <i class="bi bi-arrow-up-right"></i>
-                        </button>
-                    </div>
-                </article>
-
-                <article class="plj-job-card"
-                         data-scope="community"
-                         data-title="Accountant"
-                         data-company="Shree Business Group"
-                         data-location="Rishikesh"
-                         data-experience="2-5"
-                         data-category="finance"
-                         data-skills="accounting finance tally excel gst"
-                         data-qualification="B.Com or relevant qualification"
-                         data-salary="₹2.4–4 LPA"
-                         data-date="2 days ago">
-                    <div class="plj-job-top">
-                        <span class="plj-company-logo plj-logo-green">SB</span>
-                        <button type="button" class="plj-save-btn"
-                                aria-label="Save Accountant job"
-                                aria-pressed="false"><i class="bi bi-bookmark"></i></button>
-                    </div>
-                    <span class="plj-job-tag plj-community-tag">Community Job</span>
-                    <h3>Accountant</h3>
-                    <p class="plj-company"><i class="bi bi-building"></i> Shree Business Group</p>
-                    <div class="plj-job-meta">
-                        <span><i class="bi bi-geo-alt"></i> Rishikesh</span>
-                        <span><i class="bi bi-briefcase"></i> 2–5 Years</span>
-                        <span><i class="bi bi-mortarboard"></i> B.Com</span>
-                    </div>
-                    <div class="plj-salary"><strong>₹2.4–4 LPA</strong><small>Sample salary</small></div>
-                    <div class="plj-job-footer">
-                        <small><i class="bi bi-clock"></i> 2 days ago</small>
-                        <button type="button" class="plj-view-btn" data-view-job>
-                            View Details <i class="bi bi-arrow-up-right"></i>
-                        </button>
-                    </div>
-                </article>
-
-                <article class="plj-job-card"
-                         data-scope="global"
-                         data-title="Customer Support Associate"
-                         data-company="ConnectFirst Services"
-                         data-location="Remote"
-                         data-experience="fresher"
-                         data-category="other"
-                         data-skills="communication customer support email chat"
-                         data-qualification="12th pass or graduate"
-                         data-salary="₹2–3.5 LPA"
-                         data-date="3 days ago">
-                    <div class="plj-job-top">
-                        <span class="plj-company-logo plj-logo-purple">CF</span>
-                        <button type="button" class="plj-save-btn"
-                                aria-label="Save Customer Support Associate job"
-                                aria-pressed="false"><i class="bi bi-bookmark"></i></button>
-                    </div>
-                    <span class="plj-job-tag plj-global-tag">Global Job</span>
-                    <h3>Customer Support Associate</h3>
-                    <p class="plj-company"><i class="bi bi-building"></i> ConnectFirst Services</p>
-                    <div class="plj-job-meta">
-                        <span><i class="bi bi-geo-alt"></i> Remote</span>
-                        <span><i class="bi bi-briefcase"></i> Fresher</span>
-                        <span><i class="bi bi-mortarboard"></i> 12th / Graduate</span>
-                    </div>
-                    <div class="plj-salary"><strong>₹2–3.5 LPA</strong><small>Sample salary</small></div>
-                    <div class="plj-job-footer">
-                        <small><i class="bi bi-clock"></i> 3 days ago</small>
-                        <button type="button" class="plj-view-btn" data-view-job>
-                            View Details <i class="bi bi-arrow-up-right"></i>
-                        </button>
-                    </div>
-                </article>
-
-                <article class="plj-job-card"
-                         data-scope="community"
-                         data-title="School Teacher"
-                         data-company="Bright Future Academy"
-                         data-location="Haridwar"
-                         data-experience="2-5"
-                         data-category="education"
-                         data-skills="teaching education classroom communication"
-                         data-qualification="B.Ed and relevant degree"
-                         data-salary="₹2.5–4 LPA"
-                         data-date="4 days ago">
-                    <div class="plj-job-top">
-                        <span class="plj-company-logo plj-logo-red">BF</span>
-                        <button type="button" class="plj-save-btn"
-                                aria-label="Save School Teacher job"
-                                aria-pressed="false"><i class="bi bi-bookmark"></i></button>
-                    </div>
-                    <span class="plj-job-tag plj-community-tag">Community Job</span>
-                    <h3>School Teacher</h3>
-                    <p class="plj-company"><i class="bi bi-building"></i> Bright Future Academy</p>
-                    <div class="plj-job-meta">
-                        <span><i class="bi bi-geo-alt"></i> Haridwar</span>
-                        <span><i class="bi bi-briefcase"></i> 2–5 Years</span>
-                        <span><i class="bi bi-mortarboard"></i> B.Ed</span>
-                    </div>
-                    <div class="plj-salary"><strong>₹2.5–4 LPA</strong><small>Sample salary</small></div>
-                    <div class="plj-job-footer">
-                        <small><i class="bi bi-clock"></i> 4 days ago</small>
-                        <button type="button" class="plj-view-btn" data-view-job>
-                            View Details <i class="bi bi-arrow-up-right"></i>
-                        </button>
-                    </div>
-                </article>
-
-                <article class="plj-job-card"
-                         data-scope="global"
-                         data-title="HR Executive"
-                         data-company="TalentPath Consulting"
-                         data-location="Delhi"
-                         data-experience="2-5"
-                         data-category="hr"
-                         data-skills="human resources recruitment payroll communication"
-                         data-qualification="MBA HR or relevant experience"
-                         data-salary="₹3–5 LPA"
-                         data-date="5 days ago">
-                    <div class="plj-job-top">
-                        <span class="plj-company-logo plj-logo-teal">TP</span>
-                        <button type="button" class="plj-save-btn"
-                                aria-label="Save HR Executive job"
-                                aria-pressed="false"><i class="bi bi-bookmark"></i></button>
-                    </div>
-                    <span class="plj-job-tag plj-global-tag">Global Job</span>
-                    <h3>HR Executive</h3>
-                    <p class="plj-company"><i class="bi bi-building"></i> TalentPath Consulting</p>
-                    <div class="plj-job-meta">
-                        <span><i class="bi bi-geo-alt"></i> Delhi</span>
-                        <span><i class="bi bi-briefcase"></i> 2–5 Years</span>
-                        <span><i class="bi bi-mortarboard"></i> MBA HR</span>
-                    </div>
-                    <div class="plj-salary"><strong>₹3–5 LPA</strong><small>Sample salary</small></div>
-                    <div class="plj-job-footer">
-                        <small><i class="bi bi-clock"></i> 5 days ago</small>
-                        <button type="button" class="plj-view-btn" data-view-job>
-                            View Details <i class="bi bi-arrow-up-right"></i>
-                        </button>
-                    </div>
-                </article>
+            <?php foreach ($homeJobs as $i => $j): $g = $j['scope'] === 'global';
+                $ini = strtoupper(implode('', array_map(fn($w) => mb_substr($w, 0, 1), array_slice(preg_split('/\s+/', trim($j['company'])), 0, 2)))); ?>
+            <article class="plj-job-card" data-scope="<?= $g ? 'global' : 'community' ?>" data-id="<?= (int)$j['id'] ?>" data-title="<?= h($j['title']) ?>" data-company="<?= h($j['company']) ?>"
+                     data-location="<?= h($j['location']) ?>" data-experience="<?= h($expBucket($j['experience'])) ?>" data-category="<?= h($catById[(int)$j['category_id']] ?? 'other') ?>"
+                     data-skills="<?= h(strtolower((string)$j['required_skills'])) ?>" data-qualification="<?= h($j['qualification']) ?>" data-salary="<?= h($j['salary_text'] ?: 'Not disclosed') ?>" data-date="<?= h(web_ago($j['created_at'])) ?>">
+                <div class="plj-job-top">
+                    <span class="plj-company-logo <?= $logoColors[$i % 4] ?>"><?= h($ini ?: 'J') ?></span>
+                    <button type="button" class="plj-save-btn<?= !empty($j['saved']) ? ' is-saved' : '' ?>" data-job-id="<?= (int)$j['id'] ?>" aria-label="Save <?= h($j['title']) ?> job" aria-pressed="<?= !empty($j['saved']) ? 'true' : 'false' ?>"><i class="bi <?= !empty($j['saved']) ? 'bi-bookmark-fill' : 'bi-bookmark' ?>"></i></button>
+                </div>
+                <span class="plj-job-tag <?= $g ? 'plj-global-tag' : 'plj-community-tag' ?>"><?= $g ? 'Global Job' : 'Community Job' ?></span>
+                <h3><?= h($j['title']) ?></h3>
+                <p class="plj-company"><i class="bi bi-building"></i> <?= h($j['company']) ?></p>
+                <div class="plj-job-meta">
+                    <span><i class="bi bi-geo-alt"></i> <?= h($j['location']) ?></span>
+                    <span><i class="bi bi-briefcase"></i> <?= h($j['experience'] ?: 'Any experience') ?></span>
+                    <?php if ($j['qualification']): ?><span><i class="bi bi-mortarboard"></i> <?= h($j['qualification']) ?></span><?php endif; ?>
+                </div>
+                <div class="plj-salary"><strong><?= h($j['salary_text'] ?: 'Not disclosed') ?></strong><small><?= h($j['job_type']) ?></small></div>
+                <div class="plj-job-footer">
+                    <small><i class="bi bi-clock"></i> <?= h(web_ago($j['created_at'])) ?></small>
+                    <a class="plj-view-btn" href="job-details.php?id=<?= (int)$j['id'] ?>">View Details <i class="bi bi-arrow-up-right"></i></a>
+                </div>
+            </article>
+            <?php endforeach; ?>
 
                 <div class="plj-empty" id="pljEmpty" hidden>
                     <i class="bi bi-search"></i>
@@ -995,7 +830,7 @@
                         <span><i class="bi bi-globe2"></i> Global Job</span>
                     </div>
                 </div>
-                <a href="post-job.php" class="plj-btn plj-btn-primary">
+                <a href="post-a-job.php" class="plj-btn plj-btn-primary">
                     <i class="bi bi-plus-lg"></i> Post a Job
                 </a>
             </div>
@@ -1518,7 +1353,7 @@
 </footer>
 
 <script src="header.js"></script>
-<script src="jobs-home.js"></script>
+<?= web_js_boot() ?><script src="jobs-home.js?v=2"></script>
 <script src="js/jobs-global.js"></script>
 </body>
 </html>

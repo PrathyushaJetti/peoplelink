@@ -1,3 +1,12 @@
+<?php
+// Page – Saved Jobs (live: jobs_saved / jobs_unsave backend actions; saved in the member's account)
+require_once dirname(__DIR__) . '/_web.php';
+web_require_login();
+web_require_community();
+$_REQUEST['per'] = 50; $_REQUEST['page'] = 1;
+$saved = web_call('jobs_saved', ['per' => 50]);
+$savedJobs = array_map('web_job_card', $saved['items'] ?? []);
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -30,14 +39,14 @@
     </div>
     <div class="pl-navbar">
       <div class="pl-container">
-        <a href="index.html" class="pl-logo" aria-label="PeopleLink Home">
+        <a href="../index.php" class="pl-logo" aria-label="PeopleLink Home">
           <img src="images/logo.jpeg" alt="PeopleLink" class="pl-logo-image">
         </a>
         <button type="button" class="pl-mobile-toggle" id="plMobileToggle" aria-label="Open navigation" aria-expanded="false">
           <span></span><span></span><span></span>
         </button>
         <nav class="pl-main-nav" id="plMainNav" aria-label="Main Navigation">
-          <a href="index.html" class="pl-nav-link">Home</a>
+          <a href="../index.php" class="pl-nav-link">Home</a>
           <div class="pl-nav-dropdown">
             <button type="button" class="pl-nav-dropdown-btn">Communities <i class="fa-solid fa-chevron-down"></i></button>
             <div class="pl-dropdown-menu">
@@ -50,8 +59,8 @@
               <a href="#communityList" class="pl-dropdown-all">View All Communities <i class="fa-solid fa-arrow-right"></i></a>
             </div>
           </div>
-          <a href="service.html" class="pl-nav-link">Services</a>
-          <a href="about.html" class="pl-nav-link">About Us</a>
+          <a href="../service.php" class="pl-nav-link">Services</a>
+          <a href="../about.php" class="pl-nav-link">About Us</a>
           <a href="#events" class="pl-nav-link">Events</a>
           <a href="#contact" class="pl-nav-link">Contact</a>
           <div class="pl-mobile-actions">
@@ -95,7 +104,7 @@
           <h2>Jobs you’ve saved</h2>
           <p>Check availability and take the next step before an opportunity closes.</p>
         </div>
-        <a href="job-search-results.html" class="sj-btn sj-btn-primary"><i class="fa-solid fa-magnifying-glass"></i> Browse Jobs</a>
+        <a href="job-search-results.php" class="sj-btn sj-btn-primary"><i class="fa-solid fa-magnifying-glass"></i> Browse Jobs</a>
       </div>
 
       <div class="sj-summary-row">
@@ -120,89 +129,37 @@
 
       <div class="sj-results-line"><strong id="resultsCount">4 saved jobs</strong><span>Availability may change as employers update listings.</span></div>
 
-      <div class="sj-job-list" id="savedJobList">
-        <article class="sj-job-card" data-id="101" data-type="global" data-saved="2026-10-09" data-closing="2026-10-15" data-status="active">
-          <div class="sj-job-main">
-            <div class="sj-company-mark global"><i class="fa-solid fa-earth-asia"></i></div>
-            <div class="sj-job-info">
-              <div class="sj-badge-row"><span class="sj-type-badge global">Global Job</span><span class="sj-status active"><i class="fa-solid fa-circle"></i> Active</span></div>
-              <h3>PHP Web Developer</h3>
-              <p class="sj-company">BrightPath Digital Solutions</p>
-              <div class="sj-meta-grid">
-                <span><i class="fa-solid fa-location-dot"></i> Dehradun, Uttarakhand</span>
-                <span><i class="fa-solid fa-briefcase"></i> 1–3 Years</span>
-                <span><i class="fa-regular fa-clock"></i> Full Time</span>
-                <span><i class="fa-solid fa-laptop"></i> Hybrid</span>
-              </div>
-              <div class="sj-job-bottom"><span class="sj-salary"><i class="fa-solid fa-indian-rupee-sign"></i> ₹20,000 – ₹35,000 / month</span><span><i class="fa-regular fa-calendar"></i> Posted 08 Oct 2026</span><span><i class="fa-solid fa-hourglass-half"></i> Closes 15 Oct 2026</span></div>
-            </div>
-          </div>
-          <div class="sj-card-actions"><button class="sj-btn sj-btn-outline" type="button" data-view><i class="fa-regular fa-eye"></i> View Details</button><a class="sj-btn sj-btn-primary" href="apply-to-job.html?job=101"><i class="fa-solid fa-paper-plane"></i> Apply Now</a><button class="sj-remove" type="button" data-remove aria-label="Remove PHP Web Developer from saved jobs"><i class="fa-solid fa-bookmark"></i> Remove from Saved</button></div>
-        </article>
-
-        <article class="sj-job-card" data-id="102" data-type="community" data-saved="2026-10-08" data-closing="2026-10-28" data-status="active">
-          <div class="sj-job-main">
-            <div class="sj-company-mark"><i class="fa-solid fa-building"></i></div>
-            <div class="sj-job-info">
-              <div class="sj-badge-row"><span class="sj-type-badge">Community Job</span><span class="sj-community-tag"><i class="fa-solid fa-users"></i> Arya Vysya</span><span class="sj-status active"><i class="fa-solid fa-circle"></i> Active</span></div>
-              <h3>Digital Marketing Executive</h3>
-              <p class="sj-company">NorthStar Business Hub</p>
-              <div class="sj-meta-grid">
-                <span><i class="fa-solid fa-location-dot"></i> Rishikesh, Uttarakhand</span>
-                <span><i class="fa-solid fa-briefcase"></i> 1–2 Years</span>
-                <span><i class="fa-regular fa-clock"></i> Full Time</span>
-                <span><i class="fa-solid fa-laptop"></i> On-site</span>
-              </div>
-              <div class="sj-job-bottom"><span class="sj-salary"><i class="fa-solid fa-indian-rupee-sign"></i> ₹18,000 – ₹28,000 / month</span><span><i class="fa-regular fa-calendar"></i> Posted 06 Oct 2026</span><span><i class="fa-solid fa-hourglass-half"></i> Closes 28 Oct 2026</span></div>
-            </div>
-          </div>
-          <div class="sj-card-actions"><button class="sj-btn sj-btn-outline" type="button" data-view><i class="fa-regular fa-eye"></i> View Details</button><a class="sj-btn sj-btn-primary" href="apply-to-job.html?job=102"><i class="fa-solid fa-paper-plane"></i> Apply Now</a><button class="sj-remove" type="button" data-remove aria-label="Remove Digital Marketing Executive from saved jobs"><i class="fa-solid fa-bookmark"></i> Remove from Saved</button></div>
-        </article>
-
-        <article class="sj-job-card" data-id="103" data-type="global" data-saved="2026-10-07" data-closing="2026-10-10" data-status="active">
-          <div class="sj-job-main">
-            <div class="sj-company-mark global"><i class="fa-solid fa-earth-asia"></i></div>
-            <div class="sj-job-info">
-              <div class="sj-badge-row"><span class="sj-type-badge global">Global Job</span><span class="sj-status active"><i class="fa-solid fa-circle"></i> Active</span><span class="sj-closing-soon"><i class="fa-solid fa-bolt"></i> Closing soon</span></div>
-              <h3>UI/UX Designer</h3>
-              <p class="sj-company">PixelCraft Studio</p>
-              <div class="sj-meta-grid">
-                <span><i class="fa-solid fa-location-dot"></i> Remote, India</span>
-                <span><i class="fa-solid fa-briefcase"></i> 2–4 Years</span>
-                <span><i class="fa-regular fa-clock"></i> Full Time</span>
-                <span><i class="fa-solid fa-laptop"></i> Remote</span>
-              </div>
-              <div class="sj-job-bottom"><span class="sj-salary"><i class="fa-solid fa-indian-rupee-sign"></i> ₹35,000 – ₹55,000 / month</span><span><i class="fa-regular fa-calendar"></i> Posted 05 Oct 2026</span><span><i class="fa-solid fa-hourglass-half"></i> Closes 10 Oct 2026</span></div>
-            </div>
-          </div>
-          <div class="sj-card-actions"><button class="sj-btn sj-btn-outline" type="button" data-view><i class="fa-regular fa-eye"></i> View Details</button><a class="sj-btn sj-btn-primary" href="apply-to-job.html?job=103"><i class="fa-solid fa-paper-plane"></i> Apply Now</a><button class="sj-remove" type="button" data-remove aria-label="Remove UI UX Designer from saved jobs"><i class="fa-solid fa-bookmark"></i> Remove from Saved</button></div>
-        </article>
-
-        <article class="sj-job-card" data-id="104" data-type="community" data-saved="2026-10-04" data-closing="2026-10-01" data-status="closed">
-          <div class="sj-job-main">
-            <div class="sj-company-mark closed-mark"><i class="fa-solid fa-building"></i></div>
-            <div class="sj-job-info">
-              <div class="sj-badge-row"><span class="sj-type-badge">Community Job</span><span class="sj-community-tag"><i class="fa-solid fa-users"></i> Reddy</span><span class="sj-status closed"><i class="fa-solid fa-circle"></i> Job Closed</span></div>
-              <h3>Accounts Assistant</h3>
-              <p class="sj-company">Evergreen Traders</p>
-              <div class="sj-meta-grid">
-                <span><i class="fa-solid fa-location-dot"></i> Haridwar, Uttarakhand</span>
-                <span><i class="fa-solid fa-briefcase"></i> Fresher</span>
-                <span><i class="fa-regular fa-clock"></i> Full Time</span>
-                <span><i class="fa-solid fa-laptop"></i> On-site</span>
-              </div>
-              <div class="sj-job-bottom"><span class="sj-salary"><i class="fa-solid fa-indian-rupee-sign"></i> ₹12,000 – ₹16,000 / month</span><span><i class="fa-regular fa-calendar"></i> Posted 20 Sep 2026</span><span><i class="fa-solid fa-hourglass-half"></i> Closed 01 Oct 2026</span></div>
-            </div>
-          </div>
-          <div class="sj-card-actions"><button class="sj-btn sj-btn-outline" type="button" data-view><i class="fa-regular fa-eye"></i> View Details</button><button class="sj-btn sj-btn-disabled" type="button" disabled><i class="fa-solid fa-lock"></i> Applications Closed</button><button class="sj-remove" type="button" data-remove aria-label="Remove Accounts Assistant from saved jobs"><i class="fa-solid fa-bookmark"></i> Remove from Saved</button></div>
-        </article>
-      </div>
+                <div class="sj-job-list" id="savedJobList">
+                <?php foreach ($savedJobs as $j):
+                    $g = $j['scope'] === 'global';
+                    $st = !empty($j['accepting_applications']) ? 'active' : (!empty($j['expired']) ? 'expired' : 'closed');
+                    $stLabel = ['active' => 'Active', 'expired' => 'Expired', 'closed' => 'Job Closed'][$st]; ?>
+                    <article class="sj-job-card" data-id="<?= (int)$j['id'] ?>" data-type="<?= $g ? 'global' : 'community' ?>" data-saved="<?= h(substr((string)($j['saved_at'] ?? $j['created_at']), 0, 10)) ?>" data-closing="<?= h($j['closing_date'] ?: '9999-12-31') ?>" data-status="<?= $st ?>">
+                        <div class="sj-job-main">
+                            <div class="sj-company-mark<?= $g ? ' global' : '' ?>"><i class="fa-solid <?= $g ? 'fa-earth-asia' : 'fa-building' ?>"></i></div>
+                            <div class="sj-job-info">
+                                <div class="sj-badge-row"><span class="sj-type-badge<?= $g ? ' global' : '' ?>"><?= $g ? 'Global Job' : 'Community Job' ?></span><?php if (!$g && $j['community']): ?><span class="sj-community-tag"><i class="fa-solid fa-users"></i> <?= h($j['community']) ?></span><?php endif; ?><span class="sj-status <?= $st ?>"><i class="fa-solid fa-circle"></i> <?= $stLabel ?></span></div>
+                                <h3><?= h($j['title']) ?></h3>
+                                <p class="sj-company"><?= h($j['company']) ?></p>
+                                <div class="sj-meta-grid">
+                                    <span><i class="fa-solid fa-location-dot"></i> <?= h($j['location']) ?></span>
+                                    <span><i class="fa-solid fa-briefcase"></i> <?= h($j['experience'] ?: 'Not specified') ?></span>
+                                    <span><i class="fa-regular fa-clock"></i> <?= h($j['job_type']) ?></span>
+                                    <span><i class="fa-solid fa-laptop"></i> <?= h($j['work_mode']) ?></span>
+                                </div>
+                                <div class="sj-job-bottom"><span class="sj-salary"><i class="fa-solid fa-indian-rupee-sign"></i> <?= h($j['salary_text'] ?: 'Salary not disclosed') ?></span><span><i class="fa-regular fa-calendar"></i> Posted <?= h(date('d M Y', strtotime($j['created_at']))) ?></span><?php if ($j['closing_date']): ?><span><i class="fa-solid fa-hourglass-half"></i> Closes <?= h(date('d M Y', strtotime($j['closing_date']))) ?></span><?php endif; ?></div>
+                            </div>
+                        </div>
+                        <div class="sj-card-actions"><a class="sj-btn sj-btn-outline" href="job-details.php?id=<?= (int)$j['id'] ?>"><i class="fa-regular fa-eye"></i> View Details</a><?php if ($st === 'active' && empty($j['applied'])): ?><a class="sj-btn sj-btn-primary" href="job-details.php?id=<?= (int)$j['id'] ?>#apply"><i class="fa-solid fa-paper-plane"></i> Apply Now</a><?php elseif (!empty($j['applied'])): ?><a class="sj-btn sj-btn-outline" href="my-applications.php"><i class="fa-solid fa-circle-check"></i> Applied</a><?php endif; ?><button class="sj-remove" type="button" data-remove data-job-id="<?= (int)$j['id'] ?>" aria-label="Remove <?= h($j['title']) ?> from saved jobs"><i class="fa-solid fa-bookmark"></i> Remove from Saved</button></div>
+                    </article>
+                <?php endforeach; ?>
+                </div>
 
       <section class="sj-empty" id="savedEmpty" hidden>
         <div class="sj-empty-icon"><i class="fa-regular fa-bookmark"></i></div>
         <h3>You have not saved any jobs yet.</h3>
         <p>Save interesting opportunities while browsing and they’ll appear here for easy access.</p>
-        <a href="job-search-results.html" class="sj-btn sj-btn-primary"><i class="fa-solid fa-magnifying-glass"></i> Browse Jobs</a>
+        <a href="job-search-results.php" class="sj-btn sj-btn-primary"><i class="fa-solid fa-magnifying-glass"></i> Browse Jobs</a>
       </section>
     </section>
   </main>
@@ -213,14 +170,14 @@
       <div class="pl-footer-container">
         <div class="pl-footer-grid">
           <div class="pl-footer-brand">
-            <a href="index.html" class="pl-footer-logo"><img src="images/logo.jpeg" alt="PeopleLink"></a>
+            <a href="../index.php" class="pl-footer-logo"><img src="images/logo.jpeg" alt="PeopleLink"></a>
             <p>PeopleLink brings communities together, helping people connect with family, discover opportunities, build relationships and access trusted services.</p>
             <div class="pl-footer-social">
               <a href="#" aria-label="Facebook"><i class="fa-brands fa-facebook-f"></i></a><a href="#" aria-label="Instagram"><i class="fa-brands fa-instagram"></i></a><a href="#" aria-label="LinkedIn"><i class="fa-brands fa-linkedin-in"></i></a><a href="#" aria-label="YouTube"><i class="fa-brands fa-youtube"></i></a><a href="#" aria-label="X"><i class="fa-brands fa-x-twitter"></i></a>
             </div>
           </div>
-          <div class="pl-footer-column"><h3>PeopleLink</h3><ul><li><a href="index.html">Home</a></li><li><a href="about.html">About Us</a></li><li><a href="#communityList">Our Communities</a></li><li><a href="#platformServices">Our Services</a></li><li><a href="#events">Events</a></li><li><a href="#contact">Contact Us</a></li></ul></div>
-          <div class="pl-footer-column"><h3>Community</h3><ul><li><a href="#">Matrimony &amp; Relationships</a></li><li><a href="#">Family &amp; Community</a></li><li><a href="job-search-results.html">Jobs &amp; Career</a></li><li><a href="#">Professionals &amp; Businesses</a></li><li><a href="#">Marketplace</a></li><li><a href="#events">Community Events</a></li></ul></div>
+          <div class="pl-footer-column"><h3>PeopleLink</h3><ul><li><a href="../index.php">Home</a></li><li><a href="../about.php">About Us</a></li><li><a href="#communityList">Our Communities</a></li><li><a href="#platformServices">Our Services</a></li><li><a href="#events">Events</a></li><li><a href="#contact">Contact Us</a></li></ul></div>
+          <div class="pl-footer-column"><h3>Community</h3><ul><li><a href="#">Matrimony &amp; Relationships</a></li><li><a href="#">Family &amp; Community</a></li><li><a href="job-search-results.php">Jobs &amp; Career</a></li><li><a href="#">Professionals &amp; Businesses</a></li><li><a href="#">Marketplace</a></li><li><a href="#events">Community Events</a></li></ul></div>
           <div class="pl-footer-column"><h3>Support</h3><ul><li><a href="#help">Help Center</a></li><li><a href="#contact">Contact Support</a></li><li><a href="#faq">FAQs</a></li><li><a href="#privacy">Privacy Policy</a></li><li><a href="#terms">Terms &amp; Conditions</a></li><li><a href="#safety">Community Guidelines</a></li></ul></div>
           <div class="pl-footer-contact" id="contact"><h3>Get In Touch</h3><a href="#" class="pl-contact-item"><span class="pl-contact-icon"><i class="fa-solid fa-location-dot"></i></span><span><small>Location</small><strong>India</strong></span></a><a href="mailto:info@peoplelink.com" class="pl-contact-item"><span class="pl-contact-icon"><i class="fa-solid fa-envelope"></i></span><span><small>Email</small><strong>info@peoplelink.com</strong></span></a><a href="tel:+910000000000" class="pl-contact-item"><span class="pl-contact-icon"><i class="fa-solid fa-phone"></i></span><span><small>Phone</small><strong>+91 00000 00000</strong></span></a></div>
         </div>
@@ -236,12 +193,12 @@
     <div class="sj-modal-panel">
       <div class="sj-modal-head"><div><span class="sj-kicker">SAVED JOB DETAILS</span><h2 id="modalJobTitle">Job title</h2><p id="modalCompany">Company</p></div><button type="button" class="sj-modal-close" data-close-modal aria-label="Close details"><i class="fa-solid fa-xmark"></i></button></div>
       <div class="sj-modal-content" id="modalContent"></div>
-      <div class="sj-modal-actions"><button type="button" class="sj-btn sj-btn-outline" data-close-modal>Close</button><a href="apply-to-job.html" id="modalApply" class="sj-btn sj-btn-primary"><i class="fa-solid fa-paper-plane"></i> Apply Now</a></div>
+      <div class="sj-modal-actions"><button type="button" class="sj-btn sj-btn-outline" data-close-modal>Close</button><a href="job-details.php" id="modalApply" class="sj-btn sj-btn-primary"><i class="fa-solid fa-paper-plane"></i> Apply Now</a></div>
     </div>
   </div>
 
   <script src="header.js"></script>
-  <script src="saved-jobs.js"></script>
+  <?= web_js_boot() ?><script src="saved-jobs.js?v=2"></script>
 <script src="js/jobs-global.js"></script>
 </body>
 </html>

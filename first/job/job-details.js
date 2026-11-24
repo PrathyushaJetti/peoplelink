@@ -60,28 +60,18 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     if (saveJobButton) {
-        saveJobButton.addEventListener('click', function () {
-            const key = 'peoplelink_saved_jobs';
-            let saved = [];
-            try { saved = JSON.parse(localStorage.getItem(key) || '[]'); } catch (e) {}
-            const id = Number(details.id);
-            const isSaved = saved.includes(id);
-            if (isSaved) saved = saved.filter(function (item) { return item !== id; });
-            else saved.push(id);
-            try { localStorage.setItem(key, JSON.stringify(saved)); } catch (e) {}
-            saveJobButton.classList.toggle('is-saved', !isSaved);
-            saveJobButton.innerHTML = !isSaved
-                ? '<i class="fa-solid fa-bookmark"></i> Saved'
-                : '<i class="fa-regular fa-bookmark"></i> Save Job';
-            if (shareFeedback) shareFeedback.textContent = !isSaved ? 'Job saved in this browser.' : 'Job removed from saved jobs.';
+        // Saved jobs are stored in the PeopleLink account (jobs_save_toggle), not in the browser
+        saveJobButton.addEventListener('click', async function () {
+            if (!window.PL || !PL.requireLogin()) return;
+            saveJobButton.disabled = true;
+            try {
+                const r = await PL.post('jobs_save_toggle', { id: saveJobButton.dataset.jobId });
+                if (!r.ok) { PL.toast(r.error || 'Could not save this job.', true); return; }
+                saveJobButton.classList.toggle('is-saved', !!r.saved);
+                saveJobButton.innerHTML = r.saved ? '<i class="fa-solid fa-bookmark"></i> Saved' : '<i class="fa-regular fa-bookmark"></i> Save Job';
+                if (shareFeedback) shareFeedback.textContent = r.message || '';
+            } catch (e) { /* redirected to login */ } finally { saveJobButton.disabled = false; }
         });
-        try {
-            const saved = JSON.parse(localStorage.getItem('peoplelink_saved_jobs') || '[]');
-            if (saved.includes(Number(details.id))) {
-                saveJobButton.classList.add('is-saved');
-                saveJobButton.innerHTML = '<i class="fa-solid fa-bookmark"></i> Saved';
-            }
-        } catch (e) {}
     }
 
     if (shareJobButton) {

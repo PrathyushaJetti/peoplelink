@@ -359,25 +359,18 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (!saveButton) return;
 
-        saveButton.addEventListener("click", function () {
-            const job = jobData(card);
-            const key = job.scope + "|" + job.title + "|" + job.company;
-
-            if (savedJobs.has(key)) {
-                savedJobs.delete(key);
-                saveButton.classList.remove("is-saved");
-                saveButton.setAttribute("aria-pressed", "false");
-                saveButton.innerHTML = '<i class="bi bi-bookmark"></i>';
-
-                notify("Job removed from saved jobs.");
-            } else {
-                savedJobs.add(key);
-                saveButton.classList.add("is-saved");
-                saveButton.setAttribute("aria-pressed", "true");
-                saveButton.innerHTML = '<i class="bi bi-bookmark-fill"></i>';
-
-                notify("Job saved successfully.");
-            }
+        // saved jobs live in the member's PeopleLink account (jobs_save_toggle)
+        saveButton.addEventListener("click", async function () {
+            if (!window.PL || !PL.requireLogin()) return;
+            saveButton.disabled = true;
+            try {
+                const r = await PL.post("jobs_save_toggle", { id: saveButton.dataset.jobId });
+                if (!r.ok) { notify(r.error || "Could not save this job."); return; }
+                saveButton.classList.toggle("is-saved", !!r.saved);
+                saveButton.setAttribute("aria-pressed", r.saved ? "true" : "false");
+                saveButton.innerHTML = r.saved ? '<i class="bi bi-bookmark-fill"></i>' : '<i class="bi bi-bookmark"></i>';
+                notify(r.message || (r.saved ? "Job saved successfully." : "Job removed from saved jobs."));
+            } catch (e) { /* redirected to login */ } finally { saveButton.disabled = false; }
         });
 
         const viewButton = card.querySelector("[data-view-job]");
@@ -404,7 +397,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
     if (viewAll) {
         viewAll.addEventListener("click", function () {
-            notify("All matching sample listings are displayed.");
+            const f = getFilters();
+            const q = new URLSearchParams();
+            if (f.keyword || f.company) q.set("keyword", (f.keyword + " " + f.company).trim());
+            if (f.location) q.set("location", f.location);
+            q.set("scope", activeScope || "all");
+            window.location.href = "job-search-results.php?" + q.toString();
         });
     }
 

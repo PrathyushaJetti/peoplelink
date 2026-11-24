@@ -1,3 +1,26 @@
+<?php
+// Global Job Package Details + checkout (live: package from jobs_package_details, Razorpay order from jobs_package_purchase)
+require_once dirname(__DIR__) . '/_web.php';
+$p45Id = (int)($_GET['package'] ?? 0);
+$p45All = web_call('jobs_packages')['packages'] ?? [];
+$p45Pkg = null;
+foreach ($p45All as $p) if ((int)$p['id'] === $p45Id) $p45Pkg = $p;
+if (!$p45Pkg && $p45All) $p45Pkg = $p45All[min(1, count($p45All) - 1)];
+if (!$p45Pkg) { flash('No Global Job Packages are available right now.', 'error'); header('Location: global-job-packages.php'); exit; }
+$p45Icons = ['fa-briefcase', 'fa-crown', 'fa-bullhorn'];
+$p45Index = array_search($p45Pkg, $p45All, true);
+$p45Benefits = array_values(array_filter(array_merge(['Post jobs across all PeopleLink communities', 'Wider candidate reach', 'Application tracking'],
+    !empty($p45Pkg['featured_listing']) ? ['Featured job tag'] : [], !empty($p45Pkg['priority_visibility']) ? ['Priority placement in search'] : [], (array)($p45Pkg['features'] ?? []))));
+$p45Js = ['id' => (int)$p45Pkg['id'], 'name' => $p45Pkg['name'], 'label' => ['GET STARTED', 'GROW YOUR TEAM', 'MAXIMUM EXPOSURE'][min((int)$p45Index, 2)],
+    'description' => $p45Pkg['description'], 'price' => (float)$p45Pkg['price'], 'posts' => (int)$p45Pkg['job_posts'], 'validity' => (int)$p45Pkg['validity_days'],
+    'icon' => $p45Icons[min((int)$p45Index, 2)], 'benefits' => $p45Benefits];
+$p45Cur = null;
+if ($webUser) {
+    $act = web_call('jobs_active_package');
+    if (!empty($act['packages'][0])) { $c = $act['packages'][0];
+        $p45Cur = ['name' => $c['name'], 'used' => (int)($c['posts_used'] ?? 0), 'total' => (int)($c['job_posts'] ?? 0), 'expiry' => date('d M Y', strtotime($c['expires_at']))]; }
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -784,7 +807,7 @@
                     </li>
 
                     <li>
-                        <a href="jobs.html">Jobs &amp; Career</a>
+                        <a href="jobs-home.php">Jobs &amp; Career</a>
                     </li>
 
                     <li>
@@ -964,7 +987,7 @@
 ====================================================== -->
 
 <script src="header.js"></script>
-<script src="global-job-package-details.js"></script>
+<?= web_js_boot() ?><script>window.P45_PACKAGE=<?= json_encode($p45Js, JSON_HEX_TAG | JSON_HEX_AMP) ?>;window.P45_CURRENT=<?= json_encode($p45Cur, JSON_HEX_TAG | JSON_HEX_AMP) ?>;</script><script src="global-job-package-details.js?v=2"></script>
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {

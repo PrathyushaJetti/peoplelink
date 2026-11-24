@@ -1,13 +1,62 @@
 <?php
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+// Page 40 – Post a Job (live: saved through the backend action jobs_create → admin approval queue)
+require_once dirname(__DIR__) . '/_web.php';
+web_require_login();
+web_require_community();
 
 $errors = [];
 $success = false;
 $submittedJob = null;
+$jobCats = pl_categories('jobs');
+$jobOpts = pl_entity('job')['fields'];
+$optList = fn($col) => pl_opts($jobOpts[$col]); // value => label, the same choices the backend accepts
+function pj_options(array $opts, string $placeholder): string {
+    $h = '<option value="">' . h($placeholder) . '</option>';
+    foreach ($opts as $v => $l) $h .= '<option value="' . h($v) . '">' . h($l) . '</option>';
+    return $h;
+}
 
-// Keep your existing PHP form-submission logic below.
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!hash_equals((string)($_SESSION['csrf'] ?? ''), (string)($_POST['csrf'] ?? ''))) {
+        $errors[] = 'Your session expired. Please submit the form again.';
+    } else {
+        $in = $_POST;
+        $m = (array)($in['application_method'] ?? []);
+        $via = in_array('whatsapp', $m, true) && in_array('email', $m, true) ? 'both' : (in_array('whatsapp', $m, true) ? 'whatsapp' : (in_array('email', $m, true) ? 'email' : 'in_app'));
+        $place = array_map('trim', explode(',', (string)($in['job_location'] ?? '')));
+        $map = [
+            'visibility_type' => ($in['visibility'] ?? '') === 'global' ? 'global' : 'community',
+            'job_title' => $in['job_title'] ?? '', 'company_name' => $in['company_name'] ?? '',
+            'category_id' => (int)($in['job_category'] ?? 0), 'openings' => $in['openings'] ?? 1,
+            'employment_type' => $in['employment_type'] ?? '', 'work_mode' => $in['work_mode'] ?? '',
+            'location' => $in['job_location'] ?? '', 'city' => $place[0] ?? '', 'state' => $place[1] ?? '',
+            'salary_min' => $in['salary_min'] ?? '', 'salary_max' => $in['salary_max'] ?? '', 'salary_period' => 'month',
+            'experience' => $in['experience'] ?? '', 'qualification' => $in['qualification'] ?? '',
+            'required_skills' => $in['skills_required'] ?? '', 'description' => $in['job_summary'] ?? '',
+            'responsibilities' => $in['responsibilities'] ?? '', 'joining' => $in['joining_availability'] ?? '',
+            'application_email' => $in['application_email'] ?? '', 'whatsapp' => $in['application_whatsapp'] ?? '', 'apply_via' => $via,
+            'contact_person' => $in['contact_name'] ?? '',
+            'application_start_date' => $in['application_start'] ?? '', 'closing_date' => $in['application_end'] ?? '',
+            // kept with the job as extra details (shown on the job page)
+            'core_skills' => $in['required_skills'] ?? '', 'preferred_skills' => $in['preferred_skills'] ?? '',
+            'additional_requirements' => $in['additional_requirements'] ?? '', 'industry' => $in['industry'] ?? '',
+            'company_website' => $in['company_website'] ?? '', 'company_location' => $in['company_location'] ?? '',
+            'company_description' => $in['company_description'] ?? '', 'contact_mobile' => $in['contact_mobile'] ?? '', 'contact_email' => $in['contact_email'] ?? '',
+        ];
+        $saveFiles = $_FILES;
+        $r = web_call('jobs_create', array_map(fn($v) => is_string($v) ? trim($v) : $v, $map) + ['csrf' => $_POST['csrf']], true);
+        if (!empty($r['error'])) {
+            $errors[] = $r['error'];
+            if (($r['code'] ?? '') === 'PACKAGE_REQUIRED') $errors[] = 'Buy a Global Job Package, or post it as a Community Job.';
+        } else {
+            $success = true;
+            $it = $r['item'] ?? [];
+            $submittedJob = ['title' => $it['job_title'] ?? $map['job_title'], 'company' => $it['company_name'] ?? $map['company_name'],
+                'visibility' => $it['visibility_type'] ?? $map['visibility_type'], 'id' => $it['id'] ?? 0, 'warning' => $r['warning'] ?? ''];
+        }
+    }
+}
+$jsOld = (!$success && $_SERVER['REQUEST_METHOD'] === 'POST') ? array_diff_key($_POST, ['csrf' => 1]) : [];
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -461,10 +510,10 @@ $submittedJob = null;
             <section class="pj-success-card">
                 <div class="pj-success-icon"><i class="fa-solid fa-check"></i></div>
                 <span class="pj-section-kicker">JOB RECEIVED</span>
-                <h2><?= !empty($_POST['save_draft']) ? 'Draft Saved Successfully' : 'Job Submitted Successfully' ?></h2>
-                <p><strong><?= h($submittedJob['title']) ?></strong> at <?= h($submittedJob['company']) ?> has been <?= !empty($_POST['save_draft']) ? 'saved as a draft in this demo.' : 'submitted in this demo.' ?></p>
-                <?php if (empty($_POST['save_draft'])): ?><div class="pj-review-note"><i class="fa-solid fa-shield-halved"></i><span>Your job is under review and will be published after approval.</span></div><?php endif; ?>
-                <?php if ($submittedJob['visibility'] === 'global'): ?><div class="pj-review-note payment-note"><i class="fa-solid fa-credit-card"></i><span>A Global Job Package may be required. Connect your package/payment workflow to continue.</span></div><a href="global-job-packages.php" class="pj-btn pj-btn-primary">Proceed to Global Job Package / Payment <i class="fa-solid fa-arrow-right"></i></a><?php endif; ?>
+                <h2>Job Submitted Successfully</h2>
+                <p><strong><?= h($submittedJob['title']) ?></strong> at <?= h($submittedJob['company']) ?> has been submitted.</p><?php if (!empty($submittedJob['warning'])): ?><div class="pj-review-note payment-note"><i class="fa-solid fa-circle-info"></i><span><?= h($submittedJob['warning']) ?></span></div><?php endif; ?>
+                <div class="pj-review-note"><i class="fa-solid fa-shield-halved"></i><span>Your job is under review and will be published after approval by the community admin.</span></div>
+                <?php if ($submittedJob['visibility'] === 'global'): ?><div class="pj-review-note payment-note"><i class="fa-solid fa-earth-asia"></i><span>This is a Global Job: it will be visible across PeopleLink once approved.</span></div><?php endif; ?>
                 <div class="pj-success-actions"><a class="pj-btn pj-btn-outline" href="post-a-job.php">Post Another Job</a><a class="pj-btn pj-btn-primary" href="my-posted-jobs.php">View My Posted Jobs</a></div>
             </section>
         <?php else: ?>
@@ -475,7 +524,7 @@ $submittedJob = null;
                 <div class="pj-step-note"><i class="fa-solid fa-lock"></i> Your contact details stay in the application workflow</div>
             </div>
 
-            <form id="postJobForm" method="post" enctype="multipart/form-data" action="">
+            <form id="postJobForm" method="post" enctype="multipart/form-data" action=""><?= web_csrf_field() ?>
                 <section class="pj-form-card">
                     <div class="pj-card-heading"><span class="pj-card-icon"><i class="fa-solid fa-eye"></i></span><div><h3>Job Visibility</h3><p>Choose who can discover this opportunity.</p></div></div>
                     <div class="pj-visibility-options">
@@ -483,10 +532,10 @@ $submittedJob = null;
                         <label class="pj-visibility-option" data-visibility-card="global"><input type="radio" name="visibility" value="global"><span class="pj-radio-mark"></span><span class="pj-visibility-symbol global"><i class="fa-solid fa-earth-asia"></i></span><span class="pj-visibility-copy"><strong>Global Job</strong><small>Visible across the PeopleLink network.</small></span><span class="pj-visibility-check"><i class="fa-solid fa-circle-check"></i></span></label>
                     </div>
                     <div class="pj-conditional-grid" id="communityFields">
-                        <div class="pj-field"><label for="community_id">Selected Community <span>*</span></label><select id="community_id" name="community_id"><option value="">Select community</option><option>Arya Vysya</option><option>Reddy</option><option>Kamma</option><option>Kapu</option><option>Banjara</option><option>Yadava</option><option>Padmashali</option><option>Goud</option><option>Chakali</option><option>Mudiraj</option><option>Viswakarma</option><option>Other Communities</option></select><small>Community name is displayed on the job listing where applicable.</small></div>
-                        <div class="pj-community-preview"><i class="fa-solid fa-users"></i><span>Community label preview<strong id="communityNamePreview">Select a community</strong></span></div>
+                        <div class="pj-field"><label for="community_id">Selected Community <span>*</span></label><select id="community_id" name="community_id" disabled><option selected><?= h($webComm['name']) ?></option></select><small>Community jobs are posted to your selected community. <a href="/peoplelink/first/community-page.php">Change community</a></small></div>
+                        <div class="pj-community-preview"><i class="fa-solid fa-users"></i><span>Community label preview<strong id="communityNamePreview"><?= h($webComm['name']) ?></strong></span></div>
                     </div>
-                    <div class="pj-global-notice" id="globalNotice" hidden><i class="fa-solid fa-earth-asia"></i><div><strong>Global visibility selected</strong><p>This job can appear across PeopleLink. A Global Job Package may be required before publication.</p></div></div>
+                    <div class="pj-global-notice" id="globalNotice" hidden><i class="fa-solid fa-earth-asia"></i><div><strong>Global visibility selected</strong><p>This job can appear across PeopleLink. Posting a global job uses one post from your Global Job Package. <a href="global-job-packages.php">View packages</a></p></div></div>
                 </section>
 
                 <section class="pj-form-card">
@@ -494,14 +543,14 @@ $submittedJob = null;
                     <div class="pj-form-grid">
                         <div class="pj-field span-2"><label for="job_title">Job Title <span>*</span></label><input id="job_title" name="job_title" required placeholder="e.g. PHP Web Developer"></div>
                         <div class="pj-field"><label for="company_name">Company / Organisation Name <span>*</span></label><input id="company_name" name="company_name" required placeholder="Enter organisation name"></div>
-                        <div class="pj-field"><label for="job_category">Job Category <span>*</span></label><select id="job_category" name="job_category" required><option value="">Select category</option><option>Information Technology</option><option>Sales & Marketing</option><option>Accounting & Finance</option><option>Education</option><option>Healthcare</option><option>Engineering</option><option>Customer Support</option><option>Operations</option><option>Design & Creative</option><option>Other</option></select></div>
+                        <div class="pj-field"><label for="job_category">Job Category <span>*</span></label><select id="job_category" name="job_category" required><option value="">Select category</option><?php foreach ($jobCats as $c): ?><option value="<?= (int)$c['id'] ?>"><?= h($c['name']) ?></option><?php endforeach; ?></select></div>
                         <div class="pj-field"><label for="openings">Number of Openings <span>*</span></label><input id="openings" name="openings" type="number" min="1" value="1" required></div>
-                        <div class="pj-field"><label for="employment_type">Employment Type <span>*</span></label><select id="employment_type" name="employment_type" required><option value="">Select type</option><option>Full Time</option><option>Part Time</option><option>Contract</option><option>Temporary</option><option>Internship</option><option>Freelance</option></select></div>
-                        <div class="pj-field"><label for="work_mode">Work Mode <span>*</span></label><select id="work_mode" name="work_mode" required><option value="">Select mode</option><option>On-site</option><option>Hybrid</option><option>Remote</option></select></div>
+                        <div class="pj-field"><label for="employment_type">Employment Type <span>*</span></label><select id="employment_type" name="employment_type" required><?= pj_options($optList('employment_type'), 'Select type') ?></select></div>
+                        <div class="pj-field"><label for="work_mode">Work Mode <span>*</span></label><select id="work_mode" name="work_mode" required><?= pj_options($optList('work_mode'), 'Select mode') ?></select></div>
                         <div class="pj-field"><label for="job_location">Job Location <span>*</span></label><input id="job_location" name="job_location" required placeholder="City, State or Remote"></div>
                         <div class="pj-field"><label for="salary_min">Minimum Salary (₹ / month)</label><input id="salary_min" name="salary_min" type="number" min="0" placeholder="e.g. 18000"></div>
                         <div class="pj-field"><label for="salary_max">Maximum Salary (₹ / month)</label><input id="salary_max" name="salary_max" type="number" min="0" placeholder="e.g. 35000"></div>
-                        <div class="pj-field"><label for="experience">Experience Required <span>*</span></label><select id="experience" name="experience" required><option value="">Select experience</option><option>Fresher</option><option>0–1 Years</option><option>1–3 Years</option><option>3–5 Years</option><option>5–8 Years</option><option>8+ Years</option></select></div>
+                        <div class="pj-field"><label for="experience">Experience Required <span>*</span></label><select id="experience" name="experience" required><?= pj_options($optList('experience'), 'Select experience') ?></select></div>
                         <div class="pj-field"><label for="qualification">Qualification Required <span>*</span></label><input id="qualification" name="qualification" required placeholder="e.g. BCA / Any Graduate"></div>
                         <div class="pj-field span-2"><label for="skills_required">Skills Required <span>*</span></label><input id="skills_required" name="skills_required" required placeholder="Enter skills separated by commas"><small>Example: PHP, MySQL, HTML, CSS, JavaScript</small></div>
                     </div>
@@ -515,7 +564,7 @@ $submittedJob = null;
                         <div class="pj-field"><label for="required_skills">Required Skills</label><textarea id="required_skills" name="required_skills" rows="3" placeholder="Core skills candidates must have"></textarea></div>
                         <div class="pj-field"><label for="preferred_skills">Preferred Skills</label><textarea id="preferred_skills" name="preferred_skills" rows="3" placeholder="Additional useful skills"></textarea></div>
                         <div class="pj-field span-2"><label for="additional_requirements">Additional Requirements</label><textarea id="additional_requirements" name="additional_requirements" rows="3" placeholder="Certifications, travel, language or other requirements"></textarea></div>
-                        <div class="pj-field"><label for="joining_availability">Joining Availability</label><select id="joining_availability" name="joining_availability"><option value="">Select availability</option><option>Immediately</option><option>Within 15 days</option><option>Within 30 days</option><option>Within 60 days</option><option>Negotiable</option></select></div>
+                        <div class="pj-field"><label for="joining_availability">Joining Availability</label><select id="joining_availability" name="joining_availability"><?= pj_options($optList('joining'), 'Select availability') ?></select></div>
                     </div>
                 </section>
 
@@ -563,7 +612,7 @@ $submittedJob = null;
                     <div class="pj-submit-note"><i class="fa-solid fa-circle-info"></i><span>Preview your listing before submitting. Jobs may require approval before publication.</span></div>
                     <div class="pj-submit-actions">
                         <button type="button" class="pj-btn pj-btn-outline" id="previewJob"><i class="fa-regular fa-eye"></i> Preview Job</button>
-                        <button type="submit" class="pj-btn pj-btn-soft" name="save_draft" value="1"><i class="fa-regular fa-floppy-disk"></i> Save Draft</button>
+                        
                         <button type="submit" class="pj-btn pj-btn-primary" name="submit_job" value="1"><i class="fa-solid fa-paper-plane"></i> Submit Job</button>
                     </div>
                 </div>
@@ -1051,6 +1100,21 @@ $submittedJob = null;
 </footer>
 
 <script src="header.js"></script>
+<?php if ($jsOld): ?><script>
+// refill the form after an error so nothing typed is lost
+document.addEventListener('DOMContentLoaded', function () {
+  const old = <?= json_encode($jsOld, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+  const f = document.getElementById('postJobForm'); if (!f) return;
+  Object.keys(old).forEach(function (k) {
+    const v = old[k];
+    if (Array.isArray(v)) { f.querySelectorAll('[name="' + k + '[]"]').forEach(function (el) { el.checked = v.indexOf(el.value) !== -1; el.dispatchEvent(new Event('change', {bubbles: true})); }); return; }
+    f.querySelectorAll('[name="' + k + '"]').forEach(function (el) {
+      if (el.type === 'radio' || el.type === 'checkbox') { el.checked = el.value === v; if (el.checked) el.dispatchEvent(new Event('change', {bubbles: true})); }
+      else if (el.type !== 'file') el.value = v;
+    });
+  });
+});
+</script><?php endif; ?>
 <script src="post-a-job.js"></script>
 <script src="js/jobs-global.js"></script>
 </body>

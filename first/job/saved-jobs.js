@@ -65,9 +65,13 @@ document.addEventListener("DOMContentLoaded", function () {
     if (removeButton) {
       const card = removeButton.closest(".sj-job-card");
       const title = card.querySelector("h3").textContent;
-      card.remove();
-      render();
-      showToast(title + " removed from saved jobs.");
+      removeButton.disabled = true;
+      PL.post("jobs_unsave", { id: removeButton.dataset.jobId }).then(r => {
+        if (!r.ok) { removeButton.disabled = false; showToast(r.error || "Could not remove this job."); return; }
+        card.remove();
+        render();
+        showToast(title + " removed from saved jobs.");
+      }).catch(() => { removeButton.disabled = false; });
       return;
     }
     if (viewButton) {
@@ -82,7 +86,7 @@ document.addEventListener("DOMContentLoaded", function () {
         : "This opportunity is shared with a PeopleLink community. Review the requirements and apply if the role matches your experience.";
       modalTitle.textContent = title;
       modalCompany.textContent = company;
-      modalApply.href = "apply-to-job.html?job=" + encodeURIComponent(card.dataset.id);
+      modalApply.href = "job-details.php?id=" + encodeURIComponent(card.dataset.id) + "#apply";
       modalApply.style.display = card.dataset.status === "active" ? "inline-flex" : "none";
       modalContent.innerHTML = "";
       const details = [
@@ -123,6 +127,5 @@ document.addEventListener("DOMContentLoaded", function () {
   const year = document.getElementById("plCopyrightYear");
   if (year) year.textContent = new Date().getFullYear();
 
-  // A local-only demo: removed jobs stay removed only until this page is refreshed.
   render();
 });

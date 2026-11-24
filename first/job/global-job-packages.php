@@ -1,3 +1,11 @@
+<?php
+// Global Job Packages (live: jobs_packages / jobs_active_package backend actions)
+require_once dirname(__DIR__) . '/_web.php';
+$gjpPackages = web_call('jobs_packages')['packages'] ?? [];
+$gjpActive = $webUser ? web_call('jobs_active_package') : ['active' => false, 'packages' => []];
+$gjpCur = ($gjpActive['packages'] ?? [])[0] ?? null;
+$gjpIcons = [['basic', 'fa-briefcase', 'START HIRING'], ['premium', 'fa-crown', 'GROW YOUR TEAM'], ['featured', 'fa-rocket', 'MAXIMUM REACH']];
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -320,7 +328,7 @@
                     </p>
                 </div>
 
-                <span class="gjp-active-badge">
+                <span class="gjp-active-badge"<?= $gjpCur ? '' : ' hidden' ?>>
                     <i class="fa-solid fa-circle-check"></i>
                     Active Package
                 </span>
@@ -328,117 +336,25 @@
             </div>
 
 
-            <!-- SAMPLE DATA: CONNECT TO DATABASE -->
-            <article class="gjp-current-card"
-                     id="gjpCurrentPackage">
-
-                <div class="gjp-current-top">
-
-                    <div class="gjp-current-icon">
-                        <i class="fa-solid fa-crown"></i>
-                    </div>
-
-                    <div class="gjp-current-title">
-                        <span class="gjp-kicker">
-                            CURRENTLY SUBSCRIBED
-                        </span>
-
-                        <h3 id="gjpCurrentName">
-                            Premium Global Package
-                        </h3>
-
-                        <p>Global job posting subscription</p>
-                    </div>
-
-                </div>
-
-
+            <?php if ($gjpCur): $tot = (int)($gjpCur['job_posts'] ?? 0); $used = (int)($gjpCur['posts_used'] ?? 0); $pct = $tot ? (int)round($used * 100 / $tot) : 0; ?>
+            <article class="gjp-current-card" id="gjpCurrentPackage">
+                <div class="gjp-current-top"><div class="gjp-current-icon"><i class="fa-solid fa-crown"></i></div><div class="gjp-current-title"><span class="gjp-kicker">CURRENTLY SUBSCRIBED</span><h3 id="gjpCurrentName"><?= h($gjpCur['name'] ?? $gjpCur['package_name'] ?? 'Global Job Package') ?></h3><p>Global job posting subscription</p></div></div>
                 <div class="gjp-current-details">
-
-                    <div class="gjp-detail-item">
-                        <span>Purchase Date</span>
-                        <strong id="gjpPurchaseDate">
-                            01 Oct 2026
-                        </strong>
-                    </div>
-
-                    <div class="gjp-detail-item">
-                        <span>Expiry Date</span>
-                        <strong id="gjpExpiryDate">
-                            31 Dec 2026
-                        </strong>
-                    </div>
-
-                    <div class="gjp-detail-item">
-                        <span>Total Job Posts</span>
-                        <strong id="gjpTotalPosts">25</strong>
-                    </div>
-
-                    <div class="gjp-detail-item">
-                        <span>Job Posts Used</span>
-                        <strong id="gjpUsedPosts">8</strong>
-                    </div>
-
-                    <div class="gjp-detail-item">
-                        <span>Job Posts Remaining</span>
-                        <strong id="gjpRemainingPosts">17</strong>
-                    </div>
-
+                    <div class="gjp-detail-item"><span>Purchase Date</span><strong id="gjpPurchaseDate"><?= h(!empty($gjpCur['starts_at']) ? date('d M Y', strtotime($gjpCur['starts_at'])) : '—') ?></strong></div>
+                    <div class="gjp-detail-item"><span>Expiry Date</span><strong id="gjpExpiryDate"><?= h(!empty($gjpCur['expires_at']) ? date('d M Y', strtotime($gjpCur['expires_at'])) : '—') ?></strong></div>
+                    <div class="gjp-detail-item"><span>Total Job Posts</span><strong id="gjpTotalPosts"><?= $tot ?></strong></div>
+                    <div class="gjp-detail-item"><span>Job Posts Used</span><strong id="gjpUsedPosts"><?= $used ?></strong></div>
+                    <div class="gjp-detail-item"><span>Job Posts Remaining</span><strong id="gjpRemainingPosts"><?= (int)($gjpActive['remaining_global_posts'] ?? max(0, $tot - $used)) ?></strong></div>
                 </div>
-
-
-                <!-- PACKAGE USAGE -->
-                <div class="gjp-usage">
-
-                    <div class="gjp-usage-heading">
-                        <span>Package Usage</span>
-                        <strong id="gjpUsagePercentage">
-                            32% used
-                        </strong>
-                    </div>
-
-                    <div class="gjp-progress-track"
-                         id="gjpProgressTrack"
-                         role="progressbar"
-                         aria-label="Global job posts used"
-                         aria-valuemin="0"
-                         aria-valuemax="25"
-                         aria-valuenow="8">
-
-                        <span class="gjp-progress-fill"
-                              id="gjpProgressFill"
-                              style="width: 32%;">
-                        </span>
-
-                    </div>
-
-                </div>
-
-
-                <!-- CURRENT PACKAGE ACTIONS -->
-                <div class="gjp-current-actions">
-
-                    <a href="global-job-package-details.html?mode=details"
-                       class="gjp-btn outline">
-                        <i class="fa-regular fa-file-lines"></i>
-                        View Details
-                    </a>
-
-                    <a href="global-job-package-details.html?mode=renew"
-                       class="gjp-btn primary">
-                        <i class="fa-solid fa-rotate"></i>
-                        Renew Package
-                    </a>
-
-                    <a href="global-job-package-details.html?mode=upgrade"
-                       class="gjp-btn soft">
-                        <i class="fa-solid fa-arrow-up"></i>
-                        Upgrade Package
-                    </a>
-
-                </div>
-
+                <div class="gjp-usage"><div class="gjp-usage-heading"><span>Package Usage</span><strong id="gjpUsagePercentage"><?= $pct ?>% used</strong></div><div class="gjp-progress-track" id="gjpProgressTrack" role="progressbar" aria-label="Global job posts used" aria-valuemin="0" aria-valuemax="<?= $tot ?>" aria-valuenow="<?= $used ?>"><span class="gjp-progress-fill" id="gjpProgressFill" style="width: <?= $pct ?>%;"></span></div></div>
+                <div class="gjp-current-actions"><a href="post-a-job.php" class="gjp-btn primary"><i class="fa-solid fa-plus"></i> Post a Global Job</a><a href="#availablePackages" class="gjp-btn soft"><i class="fa-solid fa-arrow-up"></i> Buy More Posts</a></div>
             </article>
+            <?php else: ?>
+            <article class="gjp-current-card" id="gjpCurrentPackage">
+                <div class="gjp-current-top"><div class="gjp-current-icon"><i class="fa-regular fa-circle"></i></div><div class="gjp-current-title"><span class="gjp-kicker">NO ACTIVE PACKAGE</span><h3 id="gjpCurrentName"><?= $webUser ? 'You do not have an active Global Job Package' : 'Login to see your Global Job Package' ?></h3><p>Community jobs are free. A package is needed only to post jobs visible across all PeopleLink communities.</p></div></div>
+                <div class="gjp-current-actions"><?php if (!$webUser): ?><a href="<?= h(DASHBOARD_URL . 'login.php?next=' . urlencode($_SERVER['REQUEST_URI'] ?? '')) ?>" class="gjp-btn primary">Login</a><?php endif; ?><a href="#availablePackages" class="gjp-btn soft"><i class="fa-solid fa-arrow-down"></i> See Packages</a></div>
+            </article>
+            <?php endif; ?>
 
         </section>
 
@@ -465,225 +381,28 @@
 
             <div class="gjp-package-grid">
 
-                <!-- BASIC PACKAGE -->
-                <article class="gjp-package-card">
-
-                    <div class="gjp-package-icon basic">
-                        <i class="fa-solid fa-briefcase"></i>
-                    </div>
-
-                    <span class="gjp-package-label">
-                        GET STARTED
-                    </span>
-
-                    <h3>Basic Global Package</h3>
-
-                    <p class="gjp-package-description">
-                        A practical choice for employers with
-                        occasional global hiring needs.
-                    </p>
-
-                    <div class="gjp-price">
-                        <strong>₹999</strong>
-                        <span>/ package</span>
-                    </div>
-
-                    <p class="gjp-price-note">
-                        Illustrative price; confirm before launch.
-                    </p>
-
+                <?php foreach ($gjpPackages as $i => $p): [$cls, $icon, $label] = $gjpIcons[min($i, 2)]; $rec = !empty($p['featured_listing']) && $i === 1; ?>
+                <article class="gjp-package-card<?= $rec ? ' recommended' : '' ?>">
+                    <?php if ($rec): ?><span class="gjp-popular-badge"><i class="fa-solid fa-star"></i> MOST POPULAR</span><?php endif; ?>
+                    <div class="gjp-package-icon <?= $cls ?>"><i class="fa-solid <?= $icon ?>"></i></div>
+                    <span class="gjp-package-label"><?= $label ?></span>
+                    <h3><?= h($p['name']) ?></h3>
+                    <p class="gjp-package-description"><?= h($p['description']) ?></p>
+                    <div class="gjp-price"><strong>₹<?= number_format((float)$p['price']) ?></strong><span>/ package</span></div>
+                    <p class="gjp-price-note">Includes GST where applicable.</p>
                     <div class="gjp-package-divider"></div>
-
                     <ul class="gjp-feature-list">
-
-                        <li>
-                            <i class="fa-solid fa-check"></i>
-                            <span><strong>5</strong> global job posts</span>
-                        </li>
-
-                        <li>
-                            <i class="fa-solid fa-check"></i>
-                            <span>30-day validity</span>
-                        </li>
-
-                        <li>
-                            <i class="fa-solid fa-check"></i>
-                            <span>Standard visibility</span>
-                        </li>
-
-                        <li>
-                            <i class="fa-solid fa-check"></i>
-                            <span>Application tracking</span>
-                        </li>
-
-                        <li class="gjp-feature-muted">
-                            <i class="fa-solid fa-xmark"></i>
-                            <span>No priority placement</span>
-                        </li>
-
-                        <li>
-                            <i class="fa-solid fa-rotate"></i>
-                            <span>Renewal option available</span>
-                        </li>
-
+                        <li><i class="fa-solid fa-check"></i><span><strong><?= (int)$p['job_posts'] ?></strong> global job posts</span></li>
+                        <li><i class="fa-solid fa-check"></i><span><?= (int)$p['validity_days'] ?>-day validity</span></li>
+                        <?php if (!empty($p['featured_listing'])): ?><li><i class="fa-solid fa-check"></i><span>Featured listing</span></li><?php endif; ?>
+                        <?php if (!empty($p['priority_visibility'])): ?><li><i class="fa-solid fa-check"></i><span>Priority visibility in search</span></li><?php endif; ?>
+                        <li><i class="fa-solid fa-check"></i><span>Application tracking</span></li>
+                        <?php foreach ((array)($p['features'] ?? []) as $ft): ?><li><i class="fa-solid fa-check"></i><span><?= h($ft) ?></span></li><?php endforeach; ?>
                     </ul>
-
-                    <a href="global-job-package-details.html?package=basic"
-                       class="gjp-btn outline gjp-btn-full">
-                        Choose Basic
-                        <i class="fa-solid fa-arrow-right"></i>
-                    </a>
-
+                    <a href="global-job-package-details.php?package=<?= (int)$p['id'] ?>" class="gjp-btn <?= $rec ? 'primary' : 'outline' ?> gjp-btn-full">Choose <?= h(trim(str_replace(['Global Package', 'Package'], '', $p['name'])) ?: 'Package') ?> <i class="fa-solid fa-arrow-right"></i></a>
                 </article>
-
-
-                <!-- PREMIUM PACKAGE -->
-                <article class="gjp-package-card recommended">
-
-                    <span class="gjp-popular-badge">
-                        <i class="fa-solid fa-star"></i>
-                        MOST POPULAR
-                    </span>
-
-                    <div class="gjp-package-icon premium">
-                        <i class="fa-solid fa-crown"></i>
-                    </div>
-
-                    <span class="gjp-package-label">
-                        GROW YOUR TEAM
-                    </span>
-
-                    <h3>Premium Global Package</h3>
-
-                    <p class="gjp-package-description">
-                        Suitable for businesses hiring across
-                        multiple PeopleLink communities.
-                    </p>
-
-                    <div class="gjp-price">
-                        <strong>₹2,999</strong>
-                        <span>/ package</span>
-                    </div>
-
-                    <p class="gjp-price-note">
-                        Illustrative price; confirm before launch.
-                    </p>
-
-                    <div class="gjp-package-divider"></div>
-
-                    <ul class="gjp-feature-list">
-
-                        <li>
-                            <i class="fa-solid fa-check"></i>
-                            <span><strong>25</strong> global job posts</span>
-                        </li>
-
-                        <li>
-                            <i class="fa-solid fa-check"></i>
-                            <span>90-day validity</span>
-                        </li>
-
-                        <li>
-                            <i class="fa-solid fa-check"></i>
-                            <span>Enhanced visibility</span>
-                        </li>
-
-                        <li>
-                            <i class="fa-solid fa-check"></i>
-                            <span>Application tracking</span>
-                        </li>
-
-                        <li>
-                            <i class="fa-solid fa-check"></i>
-                            <span>Priority support</span>
-                        </li>
-
-                        <li>
-                            <i class="fa-solid fa-rotate"></i>
-                            <span>Renewal and upgrade options</span>
-                        </li>
-
-                    </ul>
-
-                    <a href="global-job-package-details.html?package=premium"
-                       class="gjp-btn primary gjp-btn-full">
-                        Choose Premium
-                        <i class="fa-solid fa-arrow-right"></i>
-                    </a>
-
-                </article>
-
-
-                <!-- FEATURED PACKAGE -->
-                <article class="gjp-package-card">
-
-                    <div class="gjp-package-icon featured">
-                        <i class="fa-solid fa-bullhorn"></i>
-                    </div>
-
-                    <span class="gjp-package-label">
-                        MAXIMUM EXPOSURE
-                    </span>
-
-                    <h3>Featured Global Package</h3>
-
-                    <p class="gjp-package-description">
-                        Designed for employers who want increased
-                        exposure and priority job placement.
-                    </p>
-
-                    <div class="gjp-price">
-                        <strong>₹5,999</strong>
-                        <span>/ package</span>
-                    </div>
-
-                    <p class="gjp-price-note">
-                        Illustrative price; confirm before launch.
-                    </p>
-
-                    <div class="gjp-package-divider"></div>
-
-                    <ul class="gjp-feature-list">
-
-                        <li>
-                            <i class="fa-solid fa-check"></i>
-                            <span><strong>50</strong> global job posts</span>
-                        </li>
-
-                        <li>
-                            <i class="fa-solid fa-check"></i>
-                            <span>180-day validity</span>
-                        </li>
-
-                        <li>
-                            <i class="fa-solid fa-check"></i>
-                            <span>Priority placement</span>
-                        </li>
-
-                        <li>
-                            <i class="fa-solid fa-check"></i>
-                            <span>Featured job tag</span>
-                        </li>
-
-                        <li>
-                            <i class="fa-solid fa-check"></i>
-                            <span>Enhanced network visibility</span>
-                        </li>
-
-                        <li>
-                            <i class="fa-solid fa-rotate"></i>
-                            <span>Renewal and upgrade options</span>
-                        </li>
-
-                    </ul>
-
-                    <a href="global-job-package-details.html?package=featured"
-                       class="gjp-btn outline gjp-btn-full">
-                        Choose Featured
-                        <i class="fa-solid fa-arrow-right"></i>
-                    </a>
-
-                </article>
+                <?php endforeach; ?>
+                <?php if (!$gjpPackages): ?><p>No Global Job Packages are available right now.</p><?php endif; ?>
 
             </div>
 
@@ -887,7 +606,7 @@
                     </li>
 
                     <li>
-                        <a href="jobs.html">Jobs &amp; Career</a>
+                        <a href="jobs-home.php">Jobs &amp; Career</a>
                     </li>
 
                     <li>
@@ -1067,7 +786,7 @@
 ====================================================== -->
 
 <script src="header.js"></script>
-<script src="global-job-packages.js"></script>
+<?= web_js_boot() ?><script src="global-job-packages.js?v=2"></script>
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {

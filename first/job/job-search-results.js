@@ -16,15 +16,20 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    document.querySelectorAll('.save-job').forEach(function (button) {
-        button.addEventListener('click', function () {
-            const saved = button.classList.toggle('is-saved');
-            button.innerHTML = saved
-                ? '<i class="fa-solid fa-bookmark"></i><span>Saved</span>'
-                : '<i class="fa-regular fa-bookmark"></i><span>Save Job</span>';
+    // Save / unsave a job (real API; one listener also covers cards added by "Load More")
+    document.addEventListener('click', async function (e) {
+        const button = e.target.closest('.save-job');
+        if (!button || !window.PL || !PL.requireLogin()) return;
+        button.disabled = true;
+        try {
+            const r = await PL.post('jobs_save_toggle', { id: button.dataset.jobId });
+            if (!r.ok) { PL.toast(r.error || 'Could not save this job.', true); return; }
+            const saved = !!r.saved;
+            button.classList.toggle('is-saved', saved);
+            button.innerHTML = saved ? '<i class="fa-solid fa-bookmark"></i><span>Saved</span>' : '<i class="fa-regular fa-bookmark"></i><span>Save Job</span>';
             button.setAttribute('aria-pressed', saved ? 'true' : 'false');
-            // Demo only: connect this action to your authenticated save-job PHP endpoint.
-        });
+            PL.toast(r.message || (saved ? 'Job saved.' : 'Removed from saved jobs.'));
+        } catch (err) { /* redirected to login */ } finally { button.disabled = false; }
     });
 
     const loadButton = document.getElementById('loadMoreJobs');
@@ -54,7 +59,7 @@ document.addEventListener('DOMContentLoaded', function () {
                             <div class="job-tags"><span class="job-type-tag">${isCommunity ? 'Community Job' : 'Global Job'}</span>${isCommunity && job.community ? `<span class="community-tag">${safe(job.community)} Community</span>` : ''}</div>
                             <h3>${safe(job.title)}</h3><p class="company-name">${safe(job.company)}</p>
                         </div>
-                        <button type="button" class="save-job" data-job-id="${Number(job.id)}" aria-label="Save ${safe(job.title)}"><i class="fa-regular fa-bookmark"></i><span>Save Job</span></button>
+                        <button type="button" class="save-job${job.saved ? ' is-saved' : ''}" data-job-id="${Number(job.id)}" aria-label="Save ${safe(job.title)}">${job.saved ? '<i class="fa-solid fa-bookmark"></i><span>Saved</span>' : '<i class="fa-regular fa-bookmark"></i><span>Save Job</span>'}</button>
                     </div>
                     <div class="job-meta">
                         <span><i class="fa-solid fa-location-dot"></i>${safe(job.location)}</span>
@@ -68,15 +73,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 list.appendChild(card);
             });
             currentIndex += remaining.length;
-            list.querySelectorAll('.save-job').forEach(function (button) {
-                if (button.dataset.bound === '1') return;
-                button.dataset.bound = '1';
-                button.addEventListener('click', function () {
-                    const saved = button.classList.toggle('is-saved');
-                    button.innerHTML = saved ? '<i class="fa-solid fa-bookmark"></i><span>Saved</span>' : '<i class="fa-regular fa-bookmark"></i><span>Save Job</span>';
-                    button.setAttribute('aria-pressed', saved ? 'true' : 'false');
-                });
-            });
+
             if (currentIndex >= window.peopleLinkJobResults.length) loadButton.remove();
         });
     }

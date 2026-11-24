@@ -1,3 +1,18 @@
+<?php
+// Page – My Applications (live: jobs_my_applications backend action)
+require_once dirname(__DIR__) . '/_web.php';
+web_require_login();
+$_REQUEST['per'] = 50; $_REQUEST['page'] = 1;
+$apps = web_call('jobs_my_applications', ['per' => 50]);
+$appItems = $apps['items'] ?? [];
+// job details for each application (location, type, salary, community, contact rules)
+$appJobs = [];
+if ($appItems) {
+    $ids = implode(',', array_map('intval', array_unique(array_column($appItems, 'job_id'))));
+    foreach (rows("SELECT * FROM jobs WHERE id IN ($ids)") as $r) $appJobs[(int)$r['id']] = web_job_card(pl_job_out($r, $webUid, true, ['application' => true]));
+}
+$methodLabel = ['in_app' => 'PeopleLink', 'email' => 'Email', 'whatsapp' => 'WhatsApp'];
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -217,7 +232,7 @@
                 </p>
             </div>
 
-            <a href="jobs.html" class="ma-btn primary">
+            <a href="jobs-home.php" class="ma-btn primary">
                 <i class="fa-solid fa-magnifying-glass"></i>
                 Find More Jobs
             </a>
@@ -343,421 +358,50 @@
         <section class="ma-list" id="maApplicationList"
                  aria-label="Your applications">
 
-            <!-- APPLICATION 1 -->
-            <article class="ma-card"
-                     data-application
-                     data-id="APP-1001"
-                     data-title="PHP Web Developer"
-                     data-company="Deep Web Solution"
-                     data-location="Rishikesh, Uttarakhand"
-                     data-visibility="community"
-                     data-community="Arya Vysya"
-                     data-application-date="2026-10-09"
-                     data-method="WhatsApp"
-                     data-job-status="active"
-                     data-application-status="Applied"
-                     data-applicant="Your Name"
-                     data-resume="My_Resume.pdf"
-                     data-message="I am interested in this PHP Web Developer opportunity and have experience working with PHP and MySQL."
-                     data-description="Develop and maintain responsive websites using PHP, MySQL, HTML, CSS and JavaScript."
-                     data-job-type="Full Time"
-                     data-salary="₹18,000–₹35,000/month"
-                     data-contact-methods="whatsapp,email"
-                     data-contact-number=""
-                     data-contact-email="">
-
+            <?php foreach ($appItems as $a):
+                $jb = $appJobs[(int)$a['job_id']] ?? [];
+                $g = !empty($a['is_global']);
+                $jobActive = ($a['job_status'] ?? '') === 'approved' && (empty($a['closing_date']) || $a['closing_date'] >= date('Y-m-d'));
+                $st = in_array($a['status'], ['applied', 'viewed', 'shortlisted', 'rejected'], true) ? $a['status'] : 'closed';
+                $stLabel = ucwords(str_replace('_', ' ', (string)$a['status']));
+                $contact = $jb ? pl_job_contact(pl_entity_row(pl_entity('job'), (int)$a['job_id']) ?: [], $webUser) : [];
+                $methods = $jb['apply_methods'] ?? []; ?>
+            <article class="ma-card" data-application
+                     data-id="<?= h($a['application_code']) ?>" data-title="<?= h($a['job_title']) ?>" data-company="<?= h($a['company_name']) ?>"
+                     data-location="<?= h($jb['location'] ?? '') ?>" data-visibility="<?= $g ? 'global' : 'community' ?>" data-community="<?= h($jb['community'] ?? '') ?>"
+                     data-application-date="<?= h(substr($a['applied_at'], 0, 10)) ?>" data-method="<?= h($methodLabel[$a['apply_method']] ?? $a['apply_method']) ?>"
+                     data-job-status="<?= $jobActive ? 'active' : 'closed' ?>" data-application-status="<?= h($stLabel) ?>" data-applicant="<?= h($a['applicant_name']) ?>"
+                     data-resume="<?= h($a['resume_name'] ?? '') ?>" data-message="<?= h($a['cover_letter'] ?? '') ?>" data-description="<?= h($jb['description'] ?? '') ?>"
+                     data-job-type="<?= h($jb['job_type'] ?? '') ?>" data-salary="<?= h($jb['salary_text'] ?? '') ?>"
+                     data-contact-methods="<?= h(implode(',', array_diff($methods, ['in_app']))) ?>" data-contact-number="<?= h($contact['whatsapp'] ?? '') ?>" data-contact-email="<?= h($contact['email'] ?? '') ?>">
                 <div class="ma-card-top">
-
-                    <div class="ma-company-mark">
-                        <i class="fa-solid fa-building"></i>
-                    </div>
-
+                    <div class="ma-company-mark"><i class="fa-solid <?= $g ? 'fa-earth-asia' : 'fa-building' ?>"></i></div>
                     <div class="ma-card-title">
-                        <div class="ma-badges">
-                            <span class="ma-type-badge">Community Job</span>
-                            <span class="ma-community-badge">
-                                <i class="fa-solid fa-users"></i>
-                                Arya Vysya
-                            </span>
-                        </div>
-
-                        <h3>PHP Web Developer</h3>
-                        <p>Deep Web Solution</p>
+                        <div class="ma-badges"><span class="ma-type-badge"><?= $g ? 'Global Job' : 'Community Job' ?></span><?php if (!$g && !empty($jb['community'])): ?><span class="ma-community-badge"><i class="fa-solid fa-users"></i> <?= h($jb['community']) ?></span><?php endif; ?></div>
+                        <h3><?= h($a['job_title']) ?></h3>
+                        <p><?= h($a['company_name']) ?></p>
                     </div>
-
-                    <span class="ma-status applied">
-                        <span></span> Applied
-                    </span>
-
+                    <span class="ma-status <?= h($st) ?>"><span></span> <?= h($stLabel) ?></span>
                 </div>
-
                 <div class="ma-meta">
-
-                    <span>
-                        <i class="fa-solid fa-location-dot"></i>
-                        Rishikesh, Uttarakhand
-                    </span>
-
-                    <span>
-                        <i class="fa-regular fa-calendar-check"></i>
-                        Applied 09 Oct 2026
-                    </span>
-
-                    <span>
-                        <i class="fa-solid fa-paper-plane"></i>
-                        WhatsApp
-                    </span>
-
+                    <span><i class="fa-solid fa-location-dot"></i> <?= h($jb['location'] ?? '') ?></span>
+                    <span><i class="fa-regular fa-calendar-check"></i> Applied <?= h(date('d M Y', strtotime($a['applied_at']))) ?></span>
+                    <span><i class="fa-solid fa-paper-plane"></i> <?= h($methodLabel[$a['apply_method']] ?? $a['apply_method']) ?></span>
+                    <span><i class="fa-solid fa-hashtag"></i> <?= h($a['application_code']) ?></span>
                 </div>
-
                 <div class="ma-card-bottom">
-
                     <div class="ma-status-summary">
-                        <span>
-                            Job Status:
-                            <strong class="ma-job-state active-text">Active</strong>
-                        </span>
-
-                        <span>
-                            Application Status:
-                            <strong>Applied</strong>
-                        </span>
+                        <span>Job Status: <strong class="ma-job-state <?= $jobActive ? 'active-text' : 'closed-text' ?>"><?= $jobActive ? 'Active' : 'Closed' ?></strong></span>
+                        <span>Application Status: <strong><?= h($stLabel) ?></strong></span>
                     </div>
-
                     <div class="ma-card-actions">
-
-                        <a href="job-details.html?id=JOB-1001"
-                           class="ma-btn small outline">
-                            <i class="fa-regular fa-eye"></i>
-                            View Job
-                        </a>
-
-                        <button type="button"
-                                class="ma-btn small outline"
-                                data-view-application>
-                            <i class="fa-regular fa-file-lines"></i>
-                            View Application
-                        </button>
-
-                        <button type="button"
-                                class="ma-btn small soft"
-                                data-contact-application>
-                            <i class="fa-solid fa-comments"></i>
-                            Contact
-                        </button>
-
+                        <a href="job-details.php?id=<?= (int)$a['job_id'] ?>" class="ma-btn small outline"><i class="fa-regular fa-eye"></i> View Job</a>
+                        <button type="button" class="ma-btn small outline" data-view-application><i class="fa-regular fa-file-lines"></i> View Application</button>
+                        <?php if (!empty($contact['email']) || !empty($contact['whatsapp'])): ?><button type="button" class="ma-btn small soft" data-contact-application><i class="fa-solid fa-comments"></i> Contact</button><?php endif; ?>
                     </div>
                 </div>
             </article>
-
-
-            <!-- APPLICATION 2 -->
-            <article class="ma-card"
-                     data-application
-                     data-id="APP-1002"
-                     data-title="Sales Executive"
-                     data-company="PeopleLink Network"
-                     data-location="Dehradun, Uttarakhand"
-                     data-visibility="global"
-                     data-community=""
-                     data-application-date="2026-10-07"
-                     data-method="Email"
-                     data-job-status="active"
-                     data-application-status="Viewed"
-                     data-applicant="Your Name"
-                     data-resume="Updated_CV.docx"
-                     data-message="I would like to be considered for this opportunity. I am interested in sales and business development."
-                     data-description="Build client relationships and support business growth across the PeopleLink network."
-                     data-job-type="Full Time"
-                     data-salary="₹20,000–₹30,000/month"
-                     data-contact-methods="email"
-                     data-contact-number=""
-                     data-contact-email="">
-
-                <div class="ma-card-top">
-
-                    <div class="ma-company-mark global">
-                        <i class="fa-solid fa-earth-asia"></i>
-                    </div>
-
-                    <div class="ma-card-title">
-                        <div class="ma-badges">
-                            <span class="ma-type-badge global">Global Job</span>
-                        </div>
-
-                        <h3>Sales Executive</h3>
-                        <p>PeopleLink Network</p>
-                    </div>
-
-                    <span class="ma-status viewed">
-                        <span></span> Viewed
-                    </span>
-
-                </div>
-
-                <div class="ma-meta">
-
-                    <span>
-                        <i class="fa-solid fa-location-dot"></i>
-                        Dehradun, Uttarakhand
-                    </span>
-
-                    <span>
-                        <i class="fa-regular fa-calendar-check"></i>
-                        Applied 07 Oct 2026
-                    </span>
-
-                    <span>
-                        <i class="fa-solid fa-envelope"></i>
-                        Email
-                    </span>
-
-                </div>
-
-                <div class="ma-card-bottom">
-
-                    <div class="ma-status-summary">
-                        <span>
-                            Job Status:
-                            <strong class="ma-job-state active-text">Active</strong>
-                        </span>
-
-                        <span>
-                            Application Status:
-                            <strong>Viewed</strong>
-                        </span>
-                    </div>
-
-                    <div class="ma-card-actions">
-
-                        <a href="job-details.html?id=JOB-1002"
-                           class="ma-btn small outline">
-                            <i class="fa-regular fa-eye"></i>
-                            View Job
-                        </a>
-
-                        <button type="button"
-                                class="ma-btn small outline"
-                                data-view-application>
-                            <i class="fa-regular fa-file-lines"></i>
-                            View Application
-                        </button>
-
-                        <button type="button"
-                                class="ma-btn small soft"
-                                data-contact-application>
-                            <i class="fa-solid fa-comments"></i>
-                            Contact
-                        </button>
-
-                    </div>
-                </div>
-            </article>
-
-
-            <!-- APPLICATION 3 -->
-            <article class="ma-card"
-                     data-application
-                     data-id="APP-1003"
-                     data-title="Graphic Designer"
-                     data-company="PeopleLink Creative"
-                     data-location="Remote"
-                     data-visibility="community"
-                     data-community="Reddy"
-                     data-application-date="2026-10-06"
-                     data-method="Email"
-                     data-job-status="active"
-                     data-application-status="Shortlisted"
-                     data-applicant="Your Name"
-                     data-resume="Design_Portfolio.pdf"
-                     data-message="I am a creative designer interested in contributing to your team."
-                     data-description="Create digital creatives, social media graphics and marketing materials."
-                     data-job-type="Freelance"
-                     data-salary="Negotiable"
-                     data-contact-methods="email"
-                     data-contact-number=""
-                     data-contact-email="">
-
-                <div class="ma-card-top">
-
-                    <div class="ma-company-mark">
-                        <i class="fa-solid fa-building"></i>
-                    </div>
-
-                    <div class="ma-card-title">
-                        <div class="ma-badges">
-                            <span class="ma-type-badge">Community Job</span>
-                            <span class="ma-community-badge">
-                                <i class="fa-solid fa-users"></i>
-                                Reddy
-                            </span>
-                        </div>
-
-                        <h3>Graphic Designer</h3>
-                        <p>PeopleLink Creative</p>
-                    </div>
-
-                    <span class="ma-status shortlisted">
-                        <span></span> Shortlisted
-                    </span>
-
-                </div>
-
-                <div class="ma-meta">
-
-                    <span>
-                        <i class="fa-solid fa-location-dot"></i>
-                        Remote
-                    </span>
-
-                    <span>
-                        <i class="fa-regular fa-calendar-check"></i>
-                        Applied 06 Oct 2026
-                    </span>
-
-                    <span>
-                        <i class="fa-solid fa-envelope"></i>
-                        Email
-                    </span>
-
-                </div>
-
-                <div class="ma-card-bottom">
-
-                    <div class="ma-status-summary">
-                        <span>
-                            Job Status:
-                            <strong class="ma-job-state active-text">Active</strong>
-                        </span>
-
-                        <span>
-                            Application Status:
-                            <strong>Shortlisted</strong>
-                        </span>
-                    </div>
-
-                    <div class="ma-card-actions">
-
-                        <a href="job-details.html?id=JOB-1003"
-                           class="ma-btn small outline">
-                            <i class="fa-regular fa-eye"></i>
-                            View Job
-                        </a>
-
-                        <button type="button"
-                                class="ma-btn small outline"
-                                data-view-application>
-                            <i class="fa-regular fa-file-lines"></i>
-                            View Application
-                        </button>
-
-                        <button type="button"
-                                class="ma-btn small soft"
-                                data-contact-application>
-                            <i class="fa-solid fa-comments"></i>
-                            Contact
-                        </button>
-
-                    </div>
-                </div>
-            </article>
-
-
-            <!-- APPLICATION 4 -->
-            <article class="ma-card"
-                     data-application
-                     data-id="APP-1004"
-                     data-title="Customer Support Associate"
-                     data-company="Community Connect"
-                     data-location="Remote"
-                     data-visibility="global"
-                     data-community=""
-                     data-application-date="2026-10-01"
-                     data-method="Email"
-                     data-job-status="closed"
-                     data-application-status="Closed"
-                     data-applicant="Your Name"
-                     data-resume="My_Resume.pdf"
-                     data-message="I am interested in the customer support opportunity."
-                     data-description="Support users and respond to service-related questions through digital channels."
-                     data-job-type="Full Time"
-                     data-salary="₹16,000–₹24,000/month"
-                     data-contact-methods=""
-                     data-contact-number=""
-                     data-contact-email="">
-
-                <div class="ma-card-top">
-
-                    <div class="ma-company-mark global">
-                        <i class="fa-solid fa-earth-asia"></i>
-                    </div>
-
-                    <div class="ma-card-title">
-                        <div class="ma-badges">
-                            <span class="ma-type-badge global">Global Job</span>
-                        </div>
-
-                        <h3>Customer Support Associate</h3>
-                        <p>Community Connect</p>
-                    </div>
-
-                    <span class="ma-status closed">
-                        <span></span> Closed
-                    </span>
-
-                </div>
-
-                <div class="ma-meta">
-
-                    <span>
-                        <i class="fa-solid fa-location-dot"></i>
-                        Remote
-                    </span>
-
-                    <span>
-                        <i class="fa-regular fa-calendar-check"></i>
-                        Applied 01 Oct 2026
-                    </span>
-
-                    <span>
-                        <i class="fa-solid fa-envelope"></i>
-                        Email
-                    </span>
-
-                </div>
-
-                <div class="ma-card-bottom">
-
-                    <div class="ma-status-summary">
-                        <span>
-                            Job Status:
-                            <strong class="ma-job-state closed-text">Closed</strong>
-                        </span>
-
-                        <span>
-                            Application Status:
-                            <strong>Closed</strong>
-                        </span>
-                    </div>
-
-                    <div class="ma-card-actions">
-
-                        <a href="job-details.html?id=JOB-1004"
-                           class="ma-btn small outline">
-                            <i class="fa-regular fa-eye"></i>
-                            View Job
-                        </a>
-
-                        <button type="button"
-                                class="ma-btn small outline"
-                                data-view-application>
-                            <i class="fa-regular fa-file-lines"></i>
-                            View Application
-                        </button>
-
-                    </div>
-                </div>
-            </article>
+            <?php endforeach; ?>
 
         </section>
 
@@ -775,7 +419,7 @@
                 Explore opportunities and submit your first job application.
             </p>
 
-            <a href="jobs.html" class="ma-btn primary">
+            <a href="jobs-home.php" class="ma-btn primary">
                 <i class="fa-solid fa-magnifying-glass"></i>
                 Explore Jobs
             </a>
@@ -910,7 +554,7 @@
                     Close
                 </button>
 
-                <a href="jobs.html"
+                <a href="jobs-home.php"
                    class="ma-btn primary"
                    id="maDetailViewJob">
                     <i class="fa-regular fa-eye"></i>
@@ -1052,7 +696,7 @@
                 <ul>
                     <li><a href="#communityList">Matrimony &amp; Relationships</a></li>
                     <li><a href="#platformServices">Family &amp; Community</a></li>
-                    <li><a href="jobs.html">Jobs &amp; Career</a></li>
+                    <li><a href="jobs-home.php">Jobs &amp; Career</a></li>
                     <li><a href="#platformServices">Professionals &amp; Businesses</a></li>
                     <li><a href="#platformServices">Marketplace</a></li>
                     <li><a href="#events">Community Events</a></li>
@@ -1216,7 +860,7 @@
 ====================================================== -->
 
 <script src="header.js"></script>
-<script src="my-applications.js"></script>
+<script src="my-applications.js?v=2"></script>
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {

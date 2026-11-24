@@ -43,7 +43,7 @@ document.addEventListener("DOMContentLoaded", () => {
      * the job ID and the authenticated user's session.
      */
 
-    const job = {
+    const job = window.AJ_JOB || {
         id: "JOB-1001",
         title: "PHP Web Developer",
         company: "Deep Web Solution",
@@ -70,7 +70,7 @@ document.addEventListener("DOMContentLoaded", () => {
      * profile values as authoritative.
      */
 
-    const demoProfile = {
+    const demoProfile = window.AJ_PROFILE || {
         fullName: "Your Name",
         mobile: "",
         email: "",
@@ -538,13 +538,27 @@ document.addEventListener("DOMContentLoaded", () => {
              * 6. Deliver email or create the configured WhatsApp flow.
              */
 
-            await new Promise((resolve) => setTimeout(resolve, 350));
-
-            const demoReference =
-                "PL-DEMO-" +
-                Date.now().toString().slice(-8);
-
-            showSuccess(payload, demoReference);
+            // Real submission: the backend action jobs_apply (same as the mobile app)
+            const fd = new FormData();
+            fd.append("csrf", (window.PL_WEB || {}).csrf || "");
+            fd.append("job_id", job.id);
+            fd.append("method", "in_app");
+            fd.append("name", payload.applicant.fullName);
+            fd.append("phone", payload.applicant.mobile);
+            fd.append("email", payload.applicant.email);
+            fd.append("total_experience", payload.applicant.experience);
+            fd.append("current_location", payload.applicant.currentLocation);
+            fd.append("cover_letter", [payload.applicant.qualification ? "Qualification: " + payload.applicant.qualification : "", payload.message].filter(Boolean).join("\n\n"));
+            if (payload.resume.mode === "upload" && payload.resume.file) { fd.append("resume", payload.resume.file); fd.append("save_resume", "1"); }
+            else fd.append("use_saved_resume", payload.resume.mode === "saved" ? "1" : "0");
+            const res = await fetch(((window.PL_WEB || {}).api || "/peoplelink/matrimoney/api.php") + "?action=jobs_apply", { method: "POST", body: fd, credentials: "same-origin" });
+            const r = await res.json();
+            if (!r.ok) {
+                if (r.code === "AUTH_REQUIRED") { window.location.href = (window.PL_WEB || {}).loginUrl; return; }
+                showError(r.error || "We couldn't process your application.");
+                return;
+            }
+            showSuccess(payload, (r.application && r.application.application_code) || ("#" + ((r.application && r.application.id) || "")));
 
         } catch (error) {
             console.error("Application submission failed:", error);
@@ -568,7 +582,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     /*
      * Example:
-     * apply-to-job.html?jobId=JOB-1001
+     * apply-to-job.php?jobId=JOB-1001
      *
      * In production, fetch the job using jobId from the
      * backend. Do not trust job details supplied in the URL.
