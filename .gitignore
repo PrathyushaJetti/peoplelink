@@ -1,0 +1,30 @@
+# --- Secrets: never commit ---
+matrimoney/config.php
+matrimoney/db-test.php
+_smoketest_*.php
+.env
+
+# --- Database dumps (contain users' personal data and password hashes) ---
+_local_setup/
+*.sql
+*.zip
+
+# --- User uploads (members' photos, resumes, files) ---
+matrimoney/uploads/*
+!matrimoney/uploads/.htaccess
+!matrimoney/uploads/photos/
+matrimoney/uploads/photos/*
+!matrimoney/uploads/photos/index.html
+!matrimoney/uploads/resumes/
+matrimoney/uploads/resumes/*
+!matrimoney/uploads/resumes/.htaccess
+!matrimoney/uploads/resumes/index.html
+module-4/Backend/uploads/*
+
+# --- Logs / OS / editor files ---
+error_log
+*.log
+Thumbs.db
+.DS_Store
+.vscode/
+.idea/

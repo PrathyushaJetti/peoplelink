@@ -1,0 +1,115 @@
+CONNECT YOUR FRONTEND PAGES TO THE DASHBOARD BACKEND
+=====================================================
+Frontend pages and the dashboard now use the SAME database, so:
+  member creates profile  -> shows in Dashboard > Profiles (Pending)  -> admin approves -> shows in frontend search
+  member uploads photo    -> Dashboard > Photo Approval               -> approved photo shows on frontend
+  member sends interest   -> Dashboard > Interests
+  member reports profile  -> Dashboard > Reported Profiles
+Extra tables/columns (preferences, saved profiles, family/about fields) are created automatically on the first call. The DB user needs ALTER/CREATE permission (normal on cPanel).
+
+SETUP (once)
+1. Upload this folder to public_html/matrimony/ (uploads/photos/ must be writable, chmod 755 or 775).
+2. config.php: DB_PASS, FRONTEND_URL, DASHBOARD_URL.
+3. Frontend "Login" / "Sign up" buttons must point to /matrimony/login.php and /matrimony/signup.php (same session is used by both sides).
+
+AT THE TOP OF EVERY FRONTEND PAGE (before any HTML)
+<?php
+require_once $_SERVER['DOCUMENT_ROOT'] . '/matrimony/includes/bridge.php';
+$comm = current_community();            // from ?c=slug or the saved session community
+$user = current_user();                 // null if not logged in
+$uid  = $user ? (int)$user['id'] : null;
+$cid  = $comm ? (int)$comm['id'] : 0;
+pl_ensure_schema();
+?>
+
+SHOW MESSAGES (success / error after a form submit) - put anywhere in the page
+<?php if ($f = flash()): ?><div class="alert <?= e($f[1]) ?>"><?= e($f[0]) ?></div><?php endif; ?>
+
+FORMS - every form posts to /matrimony/api.php with these 4 hidden fields
+<form method="post" action="/matrimony/api.php">
+  <input type="hidden" name="csrf" value="<?= csrf_token() ?>">
+  <input type="hidden" name="c" value="<?= e($comm['slug'] ?? '') ?>">
+  <input type="hidden" name="action" value="ACTION_NAME">
+  <input type="hidden" name="redirect" value="/peoplelink/first/THIS-PAGE.php">
+  ...fields...
+</form>
+
+------------------------------------------------------------------
+1) matrimony-search.php  /  community-matrimony.php  (search + featured)
+------------------------------------------------------------------
+Search form: method GET, action matrimony-search.php. Field names:
+  age (21-25 | 26-30 | 31-35 | 36+), gender (Male|Female), education, profession, country, location, q
+<?php $res = pl_search($cid, $_GET, (int)($_GET['page'] ?? 1), 12, $uid); ?>
+<?php foreach ($res['profiles'] as $p): ?>
+  <img src="<?= e($p['photo'] ?: 'images/no-photo.jpg') ?>">
+  <h3><?= e($p['profile_code']) ?></h3>
+  <p><?= (int)$p['age'] ?> yrs, <?= e($p['education']) ?>, <?= e($p['profession']) ?>, <?= e($p['city']) ?></p>
+  <a href="matrimony-profile-detail.php?id=<?= (int)$p['id'] ?>">View Profile</a>
+<?php endforeach; ?>
+Total found: <?= $res['total'] ?>  | pages: <?= $res['pages'] ?>
+Only APPROVED + active profiles are returned.
+
+------------------------------------------------------------------
+2) create-matrimony-profile.php     action = create_profile
+------------------------------------------------------------------
+Field names: full_name*, gender* (Male|Female), dob (YYYY-MM-DD) or age, marital_status, height, mother_tongue,
+             education, profession, city, state, country, phone, email, family_type, family_details, about
+Profile is saved as "pending" until approved in the dashboard.
+Page guard:  <?php if (!$user) { header('Location: /matrimony/login.php'); exit; } ?>
+
+------------------------------------------------------------------
+3) matrimony-profile-detail.php?id=
+------------------------------------------------------------------
+<?php $p = pl_get_profile((int)($_GET['id'] ?? 0), $cid, $uid); if (!$p) { http_response_code(404); exit('Profile not found'); } ?>
+Available: $p['full_name'], ['age'], ['education'], ['profession'], ['city'], ['about'], ['family_details'],
+           $p['photos'] (approved photos), $p['preferences'], $p['saved'], $p['interest_status'] (sent|accepted|rejected|null),
+           $p['contact_visible'] -> phone/email exist ONLY when true (owner, or interest accepted).
+Buttons (3 small forms, field profile_id = <?= (int)$p['id'] ?>):
+  action = send_interest      (Send Interest)
+  action = toggle_save        (Save / Unsave)
+  action = report_profile     (+ field reason)
+
+------------------------------------------------------------------
+4) edit-matrimony-profile.php       action = update_profile
+------------------------------------------------------------------
+<?php $me = pl_my_profile($uid, $cid); ?>   -> prefill: value="<?= e($me['full_name'] ?? '') ?>"
+Same field names as create. An approved profile goes back to "pending" after an edit (re-approval).
+
+------------------------------------------------------------------
+5) partner-preferences.php          action = save_preferences
+------------------------------------------------------------------
+<?php $me = pl_my_profile($uid, $cid); $pref = $me ? pl_prefs($me['id']) : []; ?>
+Field names: age_min, age_max, location, education, profession, marital_status, other
+
+------------------------------------------------------------------
+6) manage-matrimony-photos.php
+------------------------------------------------------------------
+<?php $me = pl_my_profile($uid, $cid); $photos = $me ? pl_photos($me['id'], false) : []; ?>
+List: foreach ($photos as $ph) -> <img src="<?= e($ph['image_url']) ?>"> status: <?= e($ph['status']) ?>  (pending|approved|rejected)
+Upload form: method post, enctype="multipart/form-data", action = upload_photos, file input name="photos[]" (multiple)
+Delete form: action = delete_photo, field photo_id.
+Rules: JPG/PNG/WEBP, max 3 MB each, max 6 photos per profile. New photos wait for admin approval.
+
+------------------------------------------------------------------
+7) saved-profiles.php
+------------------------------------------------------------------
+<?php $saved = $uid ? pl_saved($uid, $cid) : []; ?>
+foreach ($saved as $p) -> same card as search. Remove button: action = toggle_save, profile_id.
+
+------------------------------------------------------------------
+Interests inbox (optional, any page)
+------------------------------------------------------------------
+<?php $int = pl_interests($uid, $cid); ?>   -> $int['received'], $int['sent']
+Accept / decline form: action = respond_interest, fields interest_id, decision (accepted|rejected)
+
+------------------------------------------------------------------
+JSON / AJAX (optional)
+------------------------------------------------------------------
+GET /matrimony/api.php?c=SLUG&action=search&gender=Male&age=26-30
+GET /matrimony/api.php?c=SLUG&action=profile&id=5
+GET /matrimony/api.php?c=SLUG&action=packages
+POST actions return {"ok":true,"message":...} or {"ok":false,"error":...} (leave out "redirect").
+
+NOT INCLUDED
+- support-assistance.php : no backend table exists for it yet.
+- Buying packages : needs a payment gateway; packages are listed with pl_packages($cid).
