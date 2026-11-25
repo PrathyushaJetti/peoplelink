@@ -2,8 +2,9 @@
 # cPanel Git Version Control: "Deploy HEAD Commit" copies this repository into public_html/peoplelink of THIS cPanel account only
 # ($HOME = the account home, so it also works after moving to another cPanel). Other sites in public_html are never touched.
 # - Never deletes files on the server (no --delete), so uploaded photos, resumes and the live config stay.
+# - Sets web-readable permissions (folders 755, files 644); never copies the private permissions of the Git folder.
 # - matrimoney/config.php (live DB password) and uploads are never copied over the live ones.
 deployment:
   tasks:
     - export DEPLOYPATH=$HOME/public_html/peoplelink/
-    - /usr/bin/rsync -a --exclude='.git' --exclude='.cpanel.yml' --exclude='.gitignore' --exclude='matrimoney/config.php' --exclude='matrimoney/db-test.php' --exclude='matrimoney/uploads/' --exclude='_local_setup/' --exclude='*.sql' --exclude='*.zip' --exclude='_smoketest_*.php' ./ $DEPLOYPATH
+    - /usr/bin/rsync -rlt --chmod=Du=rwx,Dgo=rx,Fu=rw,Fgo=r --exclude='.git' --exclude='.cpanel.yml' --exclude='.gitignore' --exclude='matrimoney/config.php' --exclude='matrimoney/db-test.php' --exclude='matrimoney/uploads/' --exclude='_local_setup/' --exclude='*.sql' --exclude='*.zip' --exclude='_smoketest_*.php' ./ $DEPLOYPATH
