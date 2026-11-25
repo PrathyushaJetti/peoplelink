@@ -1,4 +1,5 @@
 <?php
+require_once dirname(__DIR__) . '/_web.php'; // session + login state before any output
 $pageTitle = "Search Professionals & Businesses | PeopleLink";
 ?>
 <?php include 'header.php'; ?>

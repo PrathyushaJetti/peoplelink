@@ -1,4 +1,4 @@
-<?php
+<?php if (realpath($_SERVER['SCRIPT_FILENAME'] ?? '') === __FILE__) { http_response_code(404); exit; } // include only
 // Shared header actions (bell, account, logout, community) — same as the Member & Family / Profile headers.
 // Used by headers that were static (Jobs pages, Directory, old Matrimony folder).
 require_once __DIR__ . '/../matrimoney/config.php';

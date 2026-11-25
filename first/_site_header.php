@@ -1,4 +1,4 @@
-<?php /* Shared site header (same as Member & Family / Profile pages). Included by the Jobs, Directory and old Matrimony pages. */ ?>
+<?php if (realpath($_SERVER['SCRIPT_FILENAME'] ?? '') === __FILE__) { http_response_code(404); exit; } // include only /* Shared site header (same as Member & Family / Profile pages). Included by the Jobs, Directory and old Matrimony pages. */ ?>
 <header
     class="pl-header"
     id="peoplelinkHeader"
