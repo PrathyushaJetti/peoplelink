@@ -181,7 +181,7 @@ include 'header.php'; ?>
                 <?php foreach ($mrItems as $m): $seller = $m['contact_name'] ?: ($mrSellers[(int)($mrOwner[$m['id']] ?? 0)] ?? 'Community Member'); ?>
                 <article class="pl-mr-card" data-category="<?= h($m['category_name']) ?>" data-price="<?= (int)$m['price'] ?>" data-date="<?= h($m['posted']) ?>" data-title="<?= h($m['title']) ?>" data-location="<?= h($m['city'] ?: $m['location_text']) ?>" data-condition="<?= h($m['item_condition']) ?>" data-status="available">
                     <div class="pl-mr-card-image">
-                        <img src="<?= h($m['image'] ?: 'images/marketplace-placeholder.jpg') ?>" alt="<?= h($m['title']) ?>" loading="lazy">
+                        <img src="<?= h($m['image'] ?: 'images/no-photo.svg') ?>" alt="<?= h($m['title']) ?>" loading="lazy">
                         <span class="pl-mr-status available"><?= h($m['listing_type'] ?: 'Available') ?></span>
                         <button type="button" class="pl-mr-save" data-live="1" data-save-id="<?= (int)$m['id'] ?>" data-saved="<?= !empty($m['saved']) ? '1' : '0' ?>" aria-label="Save <?= h($m['title']) ?>" aria-pressed="<?= !empty($m['saved']) ? 'true' : 'false' ?>"><i class="<?= !empty($m['saved']) ? 'fas' : 'far' ?> fa-heart"></i></button>
                     </div>

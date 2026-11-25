@@ -95,7 +95,7 @@ include 'header.php'; ?>
             <?php foreach ($smItems as $m): $open = empty($m['expired']); ?>
             <article class="pl-sm-card" data-id="<?= (int)$m['id'] ?>" data-category="<?= h($m['category_name']) ?>" data-title="<?= h($m['title']) ?>" data-price="<?= (int)$m['price'] ?>" data-location="<?= h($m['location_text']) ?>" data-condition="<?= h($m['item_condition']) ?>" data-availability="<?= $open ? 'active' : 'closed' ?>" data-posted="<?= h($m['posted']) ?>" data-saved="<?= h(substr((string)($smSavedAt[$m['id']] ?? $m['created_at']), 0, 10)) ?>">
                 <div class="pl-sm-image-wrap">
-                    <img src="<?= h($m['image'] ?: 'images/marketplace-placeholder.jpg') ?>" alt="<?= h($m['title']) ?>" loading="lazy">
+                    <img src="<?= h($m['image'] ?: 'images/no-photo.svg') ?>" alt="<?= h($m['title']) ?>" loading="lazy">
                     <span class="pl-sm-category-tag"><?= h($m['category_name']) ?></span>
                     <span class="pl-sm-availability <?= $open ? 'available' : 'sold' ?>"><i class="fa-solid <?= $open ? 'fa-circle-check' : 'fa-circle-xmark' ?>"></i> <?= $open ? 'Available' : 'No longer available' ?></span>
                     <button type="button" class="pl-sm-remove" data-action="remove" data-live-id="<?= (int)$m['id'] ?>" aria-label="Remove <?= h($m['title']) ?> from saved listings" title="Remove from saved"><i class="fa-solid fa-heart"></i></button>

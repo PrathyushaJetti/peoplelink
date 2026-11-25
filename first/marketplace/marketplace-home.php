@@ -224,7 +224,7 @@ include 'header.php'; ?>
                 <?php foreach ($mpLatest as $m): ?>
                 <article class="pl-market-listing-card" data-name="<?= h($m['title']) ?>" data-category="<?= h($m['category_name']) ?>" data-location="<?= h($m['location_text']) ?>" data-date="<?= h($m['posted']) ?>" data-price="<?= (int)$m['price'] ?>">
                     <div class="pl-market-listing-image">
-                        <?php if ($m['image']): ?><img src="<?= h($m['image']) ?>" alt="<?= h($m['title']) ?>" loading="lazy"><?php else: ?><img src="images/marketplace-placeholder.jpg" alt="" loading="lazy"><?php endif; ?>
+                        <?php if ($m['image']): ?><img src="<?= h($m['image']) ?>" alt="<?= h($m['title']) ?>" loading="lazy"><?php else: ?><img src="images/no-photo.svg" alt="" loading="lazy"><?php endif; ?>
                         <?php if (!empty($m['is_featured'])): ?><span class="pl-market-featured-badge"><i class="bi bi-star-fill"></i> Featured</span><?php endif; ?>
                         <button type="button" class="pl-market-save" data-live="1" data-save-id="<?= (int)$m['id'] ?>" data-saved="<?= !empty($m['saved']) ? '1' : '0' ?>" aria-pressed="<?= !empty($m['saved']) ? 'true' : 'false' ?>" aria-label="Save <?= h($m['title']) ?>"><i class="bi <?= !empty($m['saved']) ? 'bi-heart-fill' : 'bi-heart' ?>"></i></button>
                     </div>

@@ -19,7 +19,11 @@
 
   async function search() {
     const grid = $("listingGrid"); if (!grid) return;
-    if (state.lat === null && !state.place) { status("Choose a location to discover nearby listings."); render([]); return; }
+    if (state.lat === null && !state.place) {
+      status("Choose a location to discover nearby listings.");
+      const sum0 = $("resultsSummary"); if (sum0) sum0.textContent = "Use My Location or choose a city / area to see nearby professionals and businesses.";
+      render([]); const e0 = $("noResults"); if (e0) e0.hidden = true; return;
+    }
     const q = new URLSearchParams({ action: "nearme_list", per: "50", radius: String(state.radius) });
     if (state.lat !== null) { q.set("lat", state.lat); q.set("lng", state.lng); }
     else if (/^\d{6}$/.test(state.place)) q.set("q", state.place);
@@ -120,12 +124,14 @@
     if (e.target.id === "nmRadius") { state.radius = +e.target.value || 10; if (state.lat !== null) search(); }
   }, true);
 
-  document.addEventListener("DOMContentLoaded", function () {
+  // run after the old demo script (main.js) so its sample text does not overwrite ours
+  document.addEventListener("DOMContentLoaded", function () { setTimeout(init, 0); });
+  function init() {
     loadLoc();
     if (state.lat === null && !state.place && NM.city) state.place = NM.city; // start with the member's city
     if (state.lat !== null) status("Showing listings near your current location.");
     else if (state.place) status("Showing listings in " + state.place + ". Use My Location for distance-based results.");
     const s = $("sortListings"); if (s) s.value = "nearest";
     search();
-  });
+  }
 })();

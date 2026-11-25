@@ -72,7 +72,7 @@ include 'header.php'; ?>
                     <div class="pl-card-topline"><span class="pl-card-label">LISTING SUMMARY</span><span class="pl-listing-status"><i></i> Marketplace</span></div>
                     <div class="pl-listing-photo-wrap">
                         <!-- Replace the placeholder image and details with listing data from your existing backend. -->
-                        <img class="pl-listing-image" src="<?= h($cs['image'] ?: 'images/marketplace-placeholder.jpg') ?>" alt="<?= h($cs['title']) ?>">
+                        <img class="pl-listing-image" src="<?= h($cs['image'] ?: 'images/no-photo.svg') ?>" alt="<?= h($cs['title']) ?>">
                         <span class="pl-photo-badge">PeopleLink Listing</span>
                     </div>
                     <div class="pl-listing-details">

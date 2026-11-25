@@ -64,8 +64,8 @@ function web_flash_html(): string {
     $f = flash();
     if (!$f) return '';
     [$msg, $type] = $f;
-    $c = $type === 'error' ? '#b42318;background:#fef3f2;border-color:#fecdca' : '#067647;background:#ecfdf3;border-color:#abefc6';
-    return '<div role="status" style="max-width:1180px;margin:16px auto;padding:12px 16px;border:1px solid;border-radius:10px;font-weight:600;color:' . $c . '">' . h($msg) . '</div>';
+    $err = $type === 'error';
+    return '<link rel="stylesheet" href="/peoplelink/first/css/pl-live.css?v=1"><div role="status" class="plv-flash ' . ($err ? 'is-error' : 'is-success') . '"><i class="fa-solid ' . ($err ? 'fa-circle-exclamation' : 'fa-circle-check') . '"></i><span>' . h($msg) . '</span></div>';
 }
 
 /* <script> tags that give page JavaScript the API address, CSRF token and login state (used by first/js/pl-api.js). */
@@ -74,7 +74,8 @@ function web_js_boot(): string {
     $cfg = ['api' => DASHBOARD_URL . 'api.php', 'csrf' => csrf_token(), 'loggedIn' => (bool)$webUser,
         'loginUrl' => DASHBOARD_URL . 'login.php?next=' . urlencode($_SERVER['REQUEST_URI'] ?? '/peoplelink/first/')];
     return '<script>window.PL_WEB=' . json_encode($cfg, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_SLASHES) . ';</script>'
-        . '<script src="/peoplelink/first/js/pl-api.js?v=1"></script>';
+        . '<script src="/peoplelink/first/js/pl-api.js?v=1"></script>'
+        . '<link rel="stylesheet" href="/peoplelink/first/css/pl-live.css?v=1">';
 }
 
 /* Context array the backend actions expect. */

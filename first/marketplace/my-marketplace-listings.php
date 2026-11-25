@@ -19,6 +19,7 @@ function mm_status(array $m, array $row): array {
     return [['approved' => 'active', 'pending' => 'pending', 'rejected' => 'rejected', 'closed' => 'closed'][$s] ?? 'draft',
             ['approved' => 'Active', 'pending' => 'Pending Approval', 'rejected' => 'Rejected', 'closed' => 'Closed'][$s] ?? ucfirst($s)];
 }
+$mmCounts = ['all' => count($mmItems)]; foreach ($mmItems as $__m) { $__k = mm_status($__m, $mmRows[$__m['id']] ?? [])[0]; $mmCounts[$__k] = ($mmCounts[$__k] ?? 0) + 1; }
 include 'header.php'; ?>
 
  
@@ -107,32 +108,27 @@ include 'header.php'; ?>
 
                 <button class="pl-mm-tab is-active" type="button"
                         data-status="all" role="tab" aria-selected="true">
-                    All Listings <span data-tab-count="all">6</span>
+                    All Listings <span data-tab-count="all"><?= (int)($mmCounts['all'] ?? 0) ?></span>
                 </button>
 
                 <button class="pl-mm-tab" type="button"
                         data-status="active" role="tab" aria-selected="false">
-                    Active <span data-tab-count="active">2</span>
+                    Active <span data-tab-count="active"><?= (int)($mmCounts['active'] ?? 0) ?></span>
                 </button>
 
                 <button class="pl-mm-tab" type="button"
                         data-status="pending" role="tab" aria-selected="false">
-                    Pending Approval <span data-tab-count="pending">1</span>
-                </button>
-
-                <button class="pl-mm-tab" type="button"
-                        data-status="draft" role="tab" aria-selected="false">
-                    Drafts <span data-tab-count="draft">1</span>
+                    Pending Approval <span data-tab-count="pending"><?= (int)($mmCounts['pending'] ?? 0) ?></span>
                 </button>
 
                 <button class="pl-mm-tab" type="button"
                         data-status="closed" role="tab" aria-selected="false">
-                    Sold / Closed <span data-tab-count="closed">2</span>
+                    Sold / Closed <span data-tab-count="closed"><?= (int)($mmCounts['closed'] ?? 0) ?></span>
                 </button>
 
                 <button class="pl-mm-tab" type="button"
                         data-status="rejected" role="tab" aria-selected="false">
-                    Rejected <span data-tab-count="rejected">1</span>
+                    Rejected <span data-tab-count="rejected"><?= (int)($mmCounts['rejected'] ?? 0) ?></span>
                 </button>
 
             </div>
@@ -180,8 +176,8 @@ include 'header.php'; ?>
 
                 <!-- Listing 1 -->
                 <?php foreach ($mmItems as $m): $row = $mmRows[$m['id']] ?? []; [$sk, $sl] = mm_status($m, $row); ?>
-                <article class="pl-mm-listing" data-id="<?= (int)$m['id'] ?>" data-category="<?= h($m['category_name']) ?>" data-status="<?= $sk ?>" data-title="<?= h($m['title']) ?>" data-price="<?= (int)$m['price'] ?>" data-views="<?= (int)($row['views'] ?? 0) ?>" data-enquiries="<?= (int)($mmEnq[$m['id']] ?? 0) ?>" data-saved="<?= (int)($mmSav[$m['id']] ?? 0) ?>" data-location="<?= h($m['location_text']) ?>" data-date="<?= h(date('d F Y', strtotime($m['created_at']))) ?>" data-image="<?= h($m['image'] ?: 'images/marketplace-placeholder.jpg') ?>">
-                    <div class="pl-mm-listing-image"><img src="<?= h($m['image'] ?: 'images/marketplace-placeholder.jpg') ?>" alt="<?= h($m['title']) ?>" loading="lazy"><span class="pl-mm-status status-<?= $sk ?>"><?= h($sl) ?></span></div>
+                <article class="pl-mm-listing" data-id="<?= (int)$m['id'] ?>" data-category="<?= h($m['category_name']) ?>" data-status="<?= $sk ?>" data-title="<?= h($m['title']) ?>" data-price="<?= (int)$m['price'] ?>" data-views="<?= (int)($row['views'] ?? 0) ?>" data-enquiries="<?= (int)($mmEnq[$m['id']] ?? 0) ?>" data-saved="<?= (int)($mmSav[$m['id']] ?? 0) ?>" data-location="<?= h($m['location_text']) ?>" data-date="<?= h(date('d F Y', strtotime($m['created_at']))) ?>" data-image="<?= h($m['image'] ?: 'images/no-photo.svg') ?>">
+                    <div class="pl-mm-listing-image"><img src="<?= h($m['image'] ?: 'images/no-photo.svg') ?>" alt="<?= h($m['title']) ?>" loading="lazy"><span class="pl-mm-status status-<?= $sk ?>"><?= h($sl) ?></span></div>
                     <div class="pl-mm-listing-body">
                         <div class="pl-mm-listing-top"><div><span class="pl-mm-category"><?= h($m['category_text']) ?></span><h3><?= h($m['title']) ?></h3><div class="pl-mm-location"><i class="fa-solid fa-location-dot"></i> <?= h($m['location_text']) ?></div></div><strong class="pl-mm-price"><?= h($m['price_text']) ?></strong></div>
                         <div class="pl-mm-listing-meta"><span><i class="fa-regular fa-calendar"></i> <?= h(date('d M Y', strtotime($m['created_at']))) ?></span><span><i class="fa-solid fa-eye"></i> <?= (int)($row['views'] ?? 0) ?> views</span><span><i class="fa-regular fa-envelope"></i> <?= (int)($mmEnq[$m['id']] ?? 0) ?> enquiries</span><span><i class="fa-regular fa-heart"></i> <?= (int)($mmSav[$m['id']] ?? 0) ?> saved</span></div>
@@ -240,18 +236,20 @@ include 'header.php'; ?>
     </div>
 <div class="pl-mm-container">
         <!-- Enquiries received (live) -->
-        <section class="pl-mm-panel" id="enquiries" style="margin-top:24px">
-            <div class="pl-mm-panel-heading"><div><h2>Enquiries Received</h2><p>Messages from members interested in your listings.</p></div><span class="pl-mm-total-badge"><?= count($mmEnquiries) ?> enquir<?= count($mmEnquiries) === 1 ? 'y' : 'ies' ?></span></div>
-            <?php if (!$mmEnquiries): ?><p style="padding:8px 0;color:#64748b">No enquiries yet. They appear here when members contact you about a listing.</p><?php endif; ?>
-            <div style="display:grid;gap:12px">
-            <?php foreach ($mmEnquiries as $q): $tel = preg_replace('/[^\d+]/', '', (string)$q['phone']); ?>
-                <article style="border:1px solid #e2e8f0;border-radius:14px;padding:14px 16px;background:#fff">
-                    <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap"><strong><?= h($q['name'] ?: 'Member') ?></strong><small style="color:#64748b"><?= h(date('d M Y, h:i A', strtotime($q['created_at']))) ?> · <a href="marketplace-listing-details.php?id=<?= (int)$q['item_id'] ?>"><?= h($q['item_title'] ?? 'Listing') ?></a></small></div>
-                    <?php if (trim((string)$q['message']) !== ''): ?><p style="margin:8px 0;white-space:pre-line"><?= h($q['message']) ?></p><?php endif; ?>
-                    <div style="display:flex;gap:14px;flex-wrap:wrap;font-size:.92rem"><?php if ($tel): ?><a href="tel:<?= h($tel) ?>"><i class="fa-solid fa-phone"></i> <?= h($q['phone']) ?></a><a href="https://wa.me/<?= h(strlen(preg_replace('/\D/', '', $tel)) === 10 ? '91' . preg_replace('/\D/', '', $tel) : preg_replace('/\D/', '', $tel)) ?>" target="_blank" rel="noopener"><i class="fa-brands fa-whatsapp"></i> WhatsApp</a><?php endif; ?><?php if ($q['email']): ?><a href="mailto:<?= h($q['email']) ?>"><i class="fa-regular fa-envelope"></i> <?= h($q['email']) ?></a><?php endif; ?></div>
-                </article>
-            <?php endforeach; ?>
+        <section class="plv-card plv-section" id="enquiries">
+            <div class="plv-section-head">
+                <span class="plv-section-icon orange"><i class="fa-solid fa-envelope-open-text"></i></span>
+                <div><h2>Enquiries Received</h2><p>Messages from members interested in your listings.</p></div>
+                <span class="plv-count"><?= count($mmEnquiries) ?> enquir<?= count($mmEnquiries) === 1 ? 'y' : 'ies' ?></span>
             </div>
+            <?php if (!$mmEnquiries): ?><div class="plv-empty"><i class="fa-regular fa-comments"></i><h3>No enquiries yet</h3><p>When members contact you about a listing, their messages appear here.</p></div><?php endif; ?>
+            <?php foreach ($mmEnquiries as $q): $tel = preg_replace('/[^\d+]/', '', (string)$q['phone']); $wa = preg_replace('/\D/', '', $tel); if (strlen($wa) === 10) $wa = '91' . $wa; ?>
+            <article class="plv-enquiry">
+                <div class="plv-enquiry-top"><strong><?= h($q['name'] ?: 'Member') ?></strong><small><?= h(date('d M Y, h:i A', strtotime($q['created_at']))) ?> · <a href="marketplace-listing-details.php?id=<?= (int)$q['item_id'] ?>"><?= h($q['item_title'] ?? 'Listing') ?></a></small></div>
+                <?php if (trim((string)$q['message']) !== ''): ?><p><?= h($q['message']) ?></p><?php endif; ?>
+                <div class="plv-enquiry-links"><?php if ($tel): ?><a href="tel:<?= h($tel) ?>"><i class="fa-solid fa-phone"></i> <?= h($q['phone']) ?></a><a class="wa" href="https://wa.me/<?= h($wa) ?>" target="_blank" rel="noopener"><i class="fa-brands fa-whatsapp"></i> WhatsApp</a><?php endif; ?><?php if ($q['email']): ?><a href="mailto:<?= h($q['email']) ?>"><i class="fa-regular fa-envelope"></i> <?= h($q['email']) ?></a><?php endif; ?></div>
+            </article>
+            <?php endforeach; ?>
         </section>
 </div>
 </main>

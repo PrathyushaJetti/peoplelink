@@ -310,7 +310,7 @@ include 'header.php';
 </main>
 
 <script>window.NM=<?= json_encode(['categories' => array_values(array_map(fn($c) => $c['name'], array_filter(pl_categories('directory'), fn($c) => !$c['parent_id']))), 'city' => (string)($webUser['city'] ?? ''), 'radius' => 10], JSON_HEX_TAG | JSON_HEX_AMP) ?>;</script>
-<script src="near-me-live.js?v=1"></script>
+<script src="near-me-live.js?v=2"></script>
 <?php
  include 'footer.php';
 ?>

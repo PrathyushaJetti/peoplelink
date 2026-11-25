@@ -35,7 +35,7 @@ include 'header.php'; ?>
                 <div class="pl-md-primary">
                     <div class="pl-md-gallery">
                         <div class="pl-md-main-image">
-                            <img src="<?= h($mdImages[0] ?? 'images/marketplace-placeholder.jpg') ?>" id="plMdMainImage" alt="<?= h($m['title']) ?>">
+                            <img src="<?= h($mdImages[0] ?? 'images/no-photo.svg') ?>" id="plMdMainImage" alt="<?= h($m['title']) ?>">
                             <span class="pl-md-image-status"><i class="fas fa-check-circle"></i> <?= $mdOpen ? 'Available' : 'Not available' ?></span>
                             <?php if (count($mdImages) > 1): ?><span class="pl-md-image-count" id="plMdImageCount">1 / <?= count($mdImages) ?></span><?php endif; ?>
                         </div>
@@ -93,7 +93,7 @@ include 'header.php'; ?>
                         <div class="pl-md-similar-heading"><div><span class="pl-md-eyebrow">YOU MAY ALSO LIKE</span><h2>Similar Listings</h2><p>More items in <?= h($m['category_name']) ?>.</p></div><a href="marketplace-search-results.php?category=<?= rawurlencode($m['category_name']) ?>" class="pl-md-view-all">View Similar Listings <i class="fas fa-arrow-right"></i></a></div>
                         <div class="pl-md-similar-grid">
                             <?php foreach ($mdSimilar as $s): ?>
-                            <article class="pl-md-similar-card"><a href="marketplace-listing-details.php?id=<?= (int)$s['id'] ?>" class="pl-md-similar-image"><img src="<?= h($s['image'] ?: 'images/marketplace-placeholder.jpg') ?>" alt="<?= h($s['title']) ?>" loading="lazy"></a><div class="pl-md-similar-body"><span><?= h($s['category_text']) ?></span><h3><a href="marketplace-listing-details.php?id=<?= (int)$s['id'] ?>"><?= h($s['title']) ?></a></h3><strong><?= h($s['price_text']) ?></strong><small><i class="fas fa-map-marker-alt"></i> <?= h($s['location_text']) ?></small></div></article>
+                            <article class="pl-md-similar-card"><a href="marketplace-listing-details.php?id=<?= (int)$s['id'] ?>" class="pl-md-similar-image"><img src="<?= h($s['image'] ?: 'images/no-photo.svg') ?>" alt="<?= h($s['title']) ?>" loading="lazy"></a><div class="pl-md-similar-body"><span><?= h($s['category_text']) ?></span><h3><a href="marketplace-listing-details.php?id=<?= (int)$s['id'] ?>"><?= h($s['title']) ?></a></h3><strong><?= h($s['price_text']) ?></strong><small><i class="fas fa-map-marker-alt"></i> <?= h($s['location_text']) ?></small></div></article>
                             <?php endforeach; ?>
                         </div>
                     </section>

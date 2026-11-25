@@ -24,58 +24,7 @@ $savedJobs = array_map('web_job_card', $saved['items'] ?? []);
 </head>
 <body>
   <!-- PEOPLELINK HEADER -->
-  <header class="pl-header" id="peoplelinkHeader">
-    <div class="pl-topbar">
-      <div class="pl-container">
-        <div class="pl-top-left">
-          <span><i class="fa-solid fa-heart"></i> Connecting Communities</span>
-          <span><i class="fa-solid fa-location-dot"></i> Communities Across India</span>
-        </div>
-        <div class="pl-top-right">
-          <a href="#help">Help &amp; Support</a>
-          <a href="#contact">Contact Us</a>
-        </div>
-      </div>
-    </div>
-    <div class="pl-navbar">
-      <div class="pl-container">
-        <a href="../index.php" class="pl-logo" aria-label="PeopleLink Home">
-          <img src="images/logo.jpeg" alt="PeopleLink" class="pl-logo-image">
-        </a>
-        <button type="button" class="pl-mobile-toggle" id="plMobileToggle" aria-label="Open navigation" aria-expanded="false">
-          <span></span><span></span><span></span>
-        </button>
-        <nav class="pl-main-nav" id="plMainNav" aria-label="Main Navigation">
-          <a href="../index.php" class="pl-nav-link">Home</a>
-          <div class="pl-nav-dropdown">
-            <button type="button" class="pl-nav-dropdown-btn">Communities <i class="fa-solid fa-chevron-down"></i></button>
-            <div class="pl-dropdown-menu">
-              <div class="pl-dropdown-title"><strong>OUR COMMUNITIES</strong><span>Choose your community</span></div>
-              <a href="#communityList"><i class="fa-solid fa-people-group"></i> Arya Vysya</a>
-              <a href="#communityList"><i class="fa-solid fa-users"></i> Reddy</a>
-              <a href="#communityList"><i class="fa-solid fa-people-roof"></i> Kamma</a>
-              <a href="#communityList"><i class="fa-solid fa-user-group"></i> Kapu</a>
-              <a href="#communityList"><i class="fa-solid fa-people-arrows"></i> Banjara</a>
-              <a href="#communityList" class="pl-dropdown-all">View All Communities <i class="fa-solid fa-arrow-right"></i></a>
-            </div>
-          </div>
-          <a href="../service.php" class="pl-nav-link">Services</a>
-          <a href="../about.php" class="pl-nav-link">About Us</a>
-          <a href="#events" class="pl-nav-link">Events</a>
-          <a href="#contact" class="pl-nav-link">Contact</a>
-          <div class="pl-mobile-actions">
-            <a href="#communityList" class="pl-mobile-community"><i class="fa-solid fa-users"></i> Select Your Community</a>
-            <a href="#downloadApp" class="pl-mobile-download"><i class="fa-solid fa-mobile-screen-button"></i> Download App</a>
-          </div>
-        </nav>
-        <div class="pl-header-actions">
-          <a href="#login" class="pl-login"><i class="fa-regular fa-user"></i> Login</a>
-          <a href="#communityList" class="pl-community-button"><i class="fa-solid fa-users"></i> Select Community</a>
-          <a href="#downloadApp" class="pl-download-button"><i class="fa-solid fa-mobile-screen-button"></i> Download App</a>
-        </div>
-      </div>
-    </div>
-  </header>
+  <?php include __DIR__ . '/../_site_header.php'; ?>
 
   <main class="sj-page">
     <section class="sj-hero">
