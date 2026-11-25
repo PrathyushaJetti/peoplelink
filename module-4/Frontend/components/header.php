@@ -23,7 +23,7 @@ $__unread = $uid ? scalar('SELECT COUNT(*) FROM user_notifications WHERE user_id
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 <link rel="stylesheet" href="<?= $F ?>header.css?v=7">
 <link rel="stylesheet" href="<?= $F ?>footer.css">
-<link rel="stylesheet" href="../css/matrimony.css?v=9">
+<link rel="stylesheet" href="../css/matrimony.css?v=10">
 <script>
 window.MAT = <?= json_encode([
     'api' => DASHBOARD_URL . 'api.php',
