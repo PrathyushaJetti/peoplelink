@@ -21,7 +21,7 @@ $__unread = $uid ? scalar('SELECT COUNT(*) FROM user_notifications WHERE user_id
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-<link rel="stylesheet" href="<?= $F ?>header.css?v=7">
+<link rel="stylesheet" href="<?= $F ?>header.css?v=8">
 <link rel="stylesheet" href="<?= $F ?>footer.css">
 <link rel="stylesheet" href="../css/matrimony.css?v=10">
 <script>

@@ -2701,3 +2701,9 @@ i:last-child {
     .pl-header-actions .pl-download-button { display: none !important; }
     .pl-logo-image { width: 170px !important; }
 }
+
+/* Phones/tablets: a tap counts as hover, so cancel the desktop dropdown's centring shift inside the slide-in menu */
+@media (max-width: 950px) {
+    .pl-dropdown-menu,
+    .pl-nav-dropdown:hover .pl-dropdown-menu { left: auto; transform: none; }
+}
