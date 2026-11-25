@@ -7,4 +7,4 @@
 deployment:
   tasks:
     - export DEPLOYPATH=$HOME/public_html/peoplelink/
-    - /usr/bin/rsync -rlt --chmod=Du=rwx,Dgo=rx,Fu=rw,Fgo=r --exclude='.git' --exclude='.cpanel.yml' --exclude='.gitignore' --exclude='matrimoney/config.php' --exclude='matrimoney/db-test.php' --exclude='matrimoney/uploads/' --exclude='_local_setup/' --exclude='*.sql' --exclude='*.zip' --exclude='_smoketest_*.php' ./ $DEPLOYPATH
+    - /usr/bin/rsync -rltp --chmod=Du=rwx,Dgo=rx,Fu=rw,Fgo=r --exclude='.git' --exclude='.cpanel.yml' --exclude='.gitignore' --exclude='matrimoney/config.php' --exclude='matrimoney/db-test.php' --exclude='matrimoney/uploads/' --exclude='_local_setup/' --exclude='*.sql' --exclude='*.zip' --exclude='_smoketest_*.php' ./ $DEPLOYPATH
