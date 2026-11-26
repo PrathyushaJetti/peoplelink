@@ -10,7 +10,7 @@
 <?php include __DIR__ . '/site-footer.php'; ?>
 <script src="<?= $F ?>header.js"></script>
 <script src="../js/mat-api.js?v=9"></script>
-<?php foreach (($scripts ?? []) as $s): ?><script src="../js/<?= e($s) ?>?v=9"></script>
+<?php foreach (($scripts ?? []) as $s): ?><script src="../js/<?= e($s) ?>?v=10"></script>
 <?php endforeach; ?>
 </body>
 </html>

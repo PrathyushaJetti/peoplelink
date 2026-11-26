@@ -1,8 +1,8 @@
 (async function () {
   const { get, card, empty, loading, failed, $, esc } = Mat;
   const box = $("#homeCards");
-  // city list needs a community; visitors without one see "Select your community" below
-  if (window.MAT && window.MAT.community) get("matrimony_filters").then((r) => {
+  // index2.php (old layout) fills its city list here; the new home page renders cities on the server
+  if ($("#quickCity") && window.MAT && window.MAT.community) get("matrimony_filters").then((r) => {
     if (r.ok) $("#quickCity").insertAdjacentHTML("beforeend", r.filters.city.map((c) => "<option>" + esc(c) + "</option>").join(""));
   });
   if (!box) return;

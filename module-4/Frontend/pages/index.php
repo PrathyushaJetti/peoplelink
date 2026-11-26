@@ -12,6 +12,12 @@ $mhPlan = $cid ? (rows('SELECT name, price, validity_days FROM matrimony_package
 $mhCommName = $comm['name'] ?? 'your community';
 // Founder photo (first/images/Srinivas-fonder.jpeg); the logo shows instead if the file is missing
 $mhFounderImg = is_file(__DIR__ . '/../../../first/images/Srinivas-fonder.jpeg') ? $F . 'images/Srinivas-fonder.jpeg' : '';
+// City list for the hero search, straight from approved profiles (no extra request)
+$mhCityAll = $cid ? array_column(rows("SELECT MIN(TRIM(city)) v FROM matrimony_profiles WHERE community_id=? AND status='approved' AND is_active=1 AND TRIM(COALESCE(city,''))<>'' GROUP BY LOWER(TRIM(city)) ORDER BY v", [$cid]), 'v') : [];
+$mhSignup = DASHBOARD_URL . 'signup.php?next=' . urlencode(MAT_URL . 'profile-form.php');
+$mhLogin = DASHBOARD_URL . 'login.php?next=' . urlencode(MAT_URL . 'index.php');
+// Let's Begin: visitors sign up first, members without a profile create one, members with a profile search
+$mhGo = !$user ? $mhSignup : (!$me ? 'profile-form.php?first=1' : '');
 $mhRegister = !$user ? DASHBOARD_URL . 'signup.php?next=' . urlencode(MAT_URL . 'profile-form.php') : (!$me ? 'profile-form.php' : 'my-profile.php');
 ?>
 <!-- ================= HERO ================= -->
@@ -20,7 +26,7 @@ $mhRegister = !$user ? DASHBOARD_URL . 'signup.php?next=' . urlencode(MAT_URL . 
     <span class="mx-hero-tag"><?= e($comm['name'] ?? 'PeopleLink') ?> Matrimony</span>
     <h1>Find Your Life Partner</h1>
     <p>Within your own community, with verified profiles and families you can trust</p>
-    <form class="mx-search" action="search.php" method="get" aria-label="Quick search">
+    <form class="mx-search" action="search.php" method="get" aria-label="Quick search"<?= $mhGo ? ' data-go="' . e($mhGo) . '"' : '' ?>>
       <label class="mx-f"><span>I'm looking for a</span>
         <select name="gender"><option value="Female">Bride</option><option value="Male">Groom</option></select></label>
       <div class="mx-f mx-age"><span>Aged</span>
@@ -30,9 +36,23 @@ $mhRegister = !$user ? DASHBOARD_URL . 'signup.php?next=' . urlencode(MAT_URL . 
       <label class="mx-f"><span>Marital status</span>
         <select name="marital_status"><option value="">Any</option><?php foreach (['Never Married', 'Divorced', 'Widowed', 'Awaiting Divorce'] as $m): ?><option><?= e($m) ?></option><?php endforeach; ?></select></label>
       <label class="mx-f"><span>Living in</span>
-        <select name="city" id="quickCity"><option value="">Any city</option></select></label>
+        <select name="city"><option value="">Any city</option><?php foreach ($mhCityAll as $c): ?><option value="<?= e($c) ?>"><?= e(ucwords(strtolower($c))) ?></option><?php endforeach; ?></select></label>
       <button class="mx-go" type="submit">Let's Begin</button>
     </form>
+    <div class="mx-account">
+      <?php if (!$user): ?>
+        <span>New to PeopleLink Matrimony?</span>
+        <a class="mx-acc-btn primary" href="<?= e($mhSignup) ?>"><i class="fa-solid fa-user-plus"></i> Sign Up Free</a>
+        <a class="mx-acc-btn" href="<?= e($mhLogin) ?>"><i class="fa-solid fa-right-to-bracket"></i> Login</a>
+      <?php elseif (!$me): ?>
+        <span>Hi <?= e(explode(' ', trim($user['name'] ?? ''))[0] ?: 'there') ?>, create your profile to start getting matches</span>
+        <a class="mx-acc-btn primary" href="profile-form.php?first=1"><i class="fa-solid fa-id-card"></i> Create Matrimony Profile</a>
+      <?php else: ?>
+        <span>Welcome back, <?= e(explode(' ', trim($me['full_name'] ?? ''))[0]) ?></span>
+        <a class="mx-acc-btn primary" href="my-profile.php"><i class="fa-solid fa-id-card"></i> My Profile</a>
+        <a class="mx-acc-btn" href="profile-form.php"><i class="fa-solid fa-pen"></i> Edit Profile</a>
+      <?php endif; ?>
+    </div>
   </div>
   <div class="mx-band">
     <span><i class="fa-solid fa-people-group"></i> <?= $cid ? '#1 for ' . e($mhCommName) . ' families' : count($mhComms) . ' communities on PeopleLink' ?></span>
@@ -182,6 +202,9 @@ $mhRegister = !$user ? DASHBOARD_URL . 'signup.php?next=' . urlencode(MAT_URL . 
 </div>
 
 <script>
+document.querySelectorAll(".mx-search[data-go]").forEach(function (f) {
+  f.addEventListener("submit", function (ev) { ev.preventDefault(); location.href = f.dataset.go; });
+});
 document.querySelectorAll("[data-mh-tab]").forEach(function (b) {
   b.addEventListener("click", function () {
     document.querySelectorAll("[data-mh-tab]").forEach(function (x) { x.classList.toggle("on", x === b); });

@@ -516,3 +516,10 @@
   .mx-faq details p { padding: 0 16px 18px; font-size: 14.5px; }
   .mx-box, .mx-about { padding: 18px 16px; }
 }
+
+/* home hero: account actions (sign up / login / create profile) */
+.mx-account { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 10px 12px; margin-top: 18px; font-size: 15px; font-weight: 600; text-shadow: 0 2px 10px rgba(0, 0, 0, .45); }
+.mx-acc-btn { display: inline-flex; align-items: center; gap: 8px; min-height: 42px; padding: 0 20px; border-radius: 30px; border: 2px solid #fff; color: #fff !important; text-decoration: none; font: 700 14.5px Inter, sans-serif; text-shadow: none; background: rgba(9, 43, 76, .35); }
+.mx-acc-btn.primary { background: #fff; color: var(--m-rose) !important; }
+.mx-acc-btn:hover { filter: brightness(1.06); transform: translateY(-1px); }
+@media (max-width: 600px) { .mx-account > span { flex-basis: 100%; text-align: center; } .mx-acc-btn { flex: 1 1 140px; justify-content: center; } }

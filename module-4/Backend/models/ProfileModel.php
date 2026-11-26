@@ -69,7 +69,7 @@ function mat_filters(int $cid, ?string $onlyGender = null): array {
     // cities per state (search: City follows the chosen State) and how many profiles each state has
     $w = "status='approved' AND is_active=1" . ($cid ? ' AND community_id=?' : '') . " AND TRIM(COALESCE(state,''))<>''" . ($onlyGender ? ' AND gender=?' : '');
     $out['city_by_state'] = []; $out['state_counts'] = [];
-    foreach (rows("SELECT TRIM(state) st, TRIM(city) ct, COUNT(*) n FROM matrimony_profiles WHERE $w GROUP BY LOWER(TRIM(state)), LOWER(TRIM(city)) ORDER BY ct", array_merge($cid ? [$cid] : [], $onlyGender ? [$onlyGender] : [])) as $r) {
+    foreach (rows("SELECT MIN(TRIM(state)) st, MIN(TRIM(city)) ct, COUNT(*) n FROM matrimony_profiles WHERE $w GROUP BY LOWER(TRIM(state)), LOWER(TRIM(city)) ORDER BY ct", array_merge($cid ? [$cid] : [], $onlyGender ? [$onlyGender] : [])) as $r) {
         $k = mb_strtolower($r['st']);
         $out['state_counts'][$k] = ($out['state_counts'][$k] ?? 0) + (int)$r['n'];
         if ($r['ct'] !== '' && $r['ct'] !== null) $out['city_by_state'][$k][] = $r['ct'];
