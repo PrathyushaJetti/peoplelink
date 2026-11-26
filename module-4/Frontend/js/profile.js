@@ -54,6 +54,71 @@
     return "<div class='mat-locked'><b><i class='fa-solid fa-lock'></i> Contact details are private</b><p class='mat-hint'>They are shown after your interest is accepted, or when the member approves your contact request (uses one package credit).</p>" + btn + "</div>";
   }
 
+  /* ---------- detail sections (label : value rows, like the printed biodata) ---------- */
+  const kv = (label, v, tick) => {
+    if (Array.isArray(v)) v = v.filter((x) => String(x).trim() !== "").join(", ");
+    if (v === undefined || v === null || String(v).trim() === "") return "";
+    const t = tick === true ? "<i class='fa-solid fa-circle-check mat-tick yes' title='Matches you'></i>" : tick === false ? "<i class='fa-regular fa-circle-xmark mat-tick no' title='Does not match you'></i>" : "";
+    return "<div class='mat-kv'><span>" + esc(label) + "</span><b>" + esc(v) + "</b>" + t + "</div>";
+  };
+  const sec = (icon, title, body, extra) => body ? "<section class='mat-psec'><h2><span><i class='fa-solid " + icon + "'></i></span> " + esc(title) + "</h2>" + (extra || "") + body + "</section>" : "";
+  const sib = (n, m, one, many) => {
+    if (n === undefined || n === null || String(n) === "") return "";
+    n = parseInt(n, 10) || 0; m = parseInt(m, 10) || 0;
+    if (!n) return "None";
+    if (n === 1) return "1 " + one + (m ? " who is married" : " (unmarried)");
+    return n + " " + many + (m ? ", " + (m === n ? "all" : m) + " married" : ", unmarried");
+  };
+  const lines = (a) => a.filter((x) => x && String(x).trim() !== "").join(", ");
+
+  function details(p, d, pr) {
+    const his = p.gender === "Female" ? "her" : "his", He = p.gender === "Female" ? "Her" : "His";
+    const married = p.marital && p.marital !== "Never Married";
+    const about = "<section class='mat-psec'><h2><span><i class='fa-solid fa-user'></i></span> About " + (p.is_own ? "me" : esc(p.name.split(" ")[0])) + "</h2>" +
+      "<p class='mat-ptext'>" + (esc(p.intro || d.about_me) || "<span class='mat-hint'>Not added yet.</span>") + "</p>" +
+      (d.about_family ? "<h3 class='mat-psub'>About " + (p.is_own ? "my" : his) + " family</h3><p class='mat-ptext'>" + esc(d.about_family) + "</p>" : "") + "</section>";
+    const personal = kv("Age", p.age ? p.age + " Years" : "") + kv("Height", p.height) + kv("Weight", d.weight ? d.weight + " Kg" : "") + kv("Body type", d.body_type) +
+      kv("Mother tongue", p.mother_tongue) + kv("Spoken languages", d.spoken_languages) + kv("Profile created by", d.profile_created_by) +
+      kv("Marital status", lines([p.marital, married ? d.children : ""])) + kv("Lives in", lines([p.city, p.state])) + kv("Eating habits", d.eating_habits) +
+      kv("Religion", d.religion) + kv("Caste", p.community) + kv("Sub-caste", p.sub_community) + kv("Gothram", d.gothram);
+    const horoscope = kv("Date of birth", p.dob ? dt(p.dob) : "") + kv("Time of birth", d.birth_time) + kv("Place of birth", d.birth_place) +
+      kv("Star / Nakshatram", d.star) + kv("Raasi", d.raasi) + kv("Kuja dosham", d.kuja_dosham);
+    const career = kv("Education", lines([d.education_detail, p.education])) + kv("Employment", d.employed_in ? d.employed_in + (p.profession ? " – " + p.profession : "") : p.profession) +
+      kv("Designation", d.designation) + kv("Company", d.company) + kv("Work location", d.work_location) + kv("Annual income", d.annual_income);
+    const family = kv("Father", lines([d.father_name, d.father_occupation])) + kv("Mother", lines([d.mother_name, d.mother_occupation])) +
+      kv("Family type", d.family_type) + kv("Family status", d.family_status) + kv("Family values", d.family_values) +
+      kv("Brothers", sib(d.brothers, d.brothers_married, "brother", "brothers")) + kv("Sisters", sib(d.sisters, d.sisters_married, "sister", "sisters")) +
+      kv("Ancestral origin", d.family_location);
+    const life = kv("Cuisine", d.cuisine) + kv("Movies", d.movies) + kv("Music", d.music) + kv("Hobbies", d.hobbies) + kv("Interests", d.interests) +
+      kv("Smoking habits", d.smoking) + kv("Drinking habits", d.drinking);
+    // partner preferences: a tick shows whether the viewer meets each one
+    const pd = (pr && pr.data) || {}, fit = p.pref_match || {};
+    const tk = (k) => (p.is_own || !(k in fit) ? undefined : fit[k]);
+    const prefs = pr ? kv("Age", pr.age_min || pr.age_max ? (pr.age_min || "18") + " to " + (pr.age_max || "any") + " years" : "", tk("age")) +
+      kv("Marital status", pr.marital_status, tk("marital_status")) + kv("Education", pr.education, tk("education")) + kv("Profession", pr.profession, tk("profession")) +
+      kv("Mother tongue", pd.partner_mother_tongue, tk("mother_tongue")) + kv("Preferred residing state", pd.partner_states, tk("states")) +
+      kv("Preferred residing city", pd.partner_city, tk("city")) + kv("Preferred citizenship", pd.partner_citizenship, tk("citizenship")) +
+      kv("Eating habits", pd.partner_eating_habits, tk("eating_habits")) + (pr.other ? "<p class='mat-ptext'>" + esc(pr.other) + "</p>" : "") : "";
+    const nFit = Object.keys(fit).length, nYes = Object.values(fit).filter(Boolean).length;
+    const fitNote = !p.is_own && nFit ? "<p class='mat-fitnote'><i class='fa-solid fa-heart'></i> You match <b>" + nYes + " of " + nFit + "</b> of " + his + " preferences</p>" : "";
+    const common = p.common && Object.keys(p.common).length ? Object.keys(p.common).map((k) => kv(k, p.common[k])).join("") : "";
+    // own profile saved before the new fields existed: list what is still missing
+    const need = { "Profile created by": d.profile_created_by, "Weight": d.weight, "Body type": d.body_type, "Eating habits": d.eating_habits, "Spoken languages": (d.spoken_languages || []).length ? 1 : "",
+      "Religion": d.religion, "Sub-caste": p.sub_community, "Gothram": d.gothram, "Star": d.star, "Raasi": d.raasi, "Kuja dosham": d.kuja_dosham,
+      "Father's details": d.father_name && d.father_occupation, "Mother's details": d.mother_name && d.mother_occupation, "Married brothers / sisters": d.brothers_married !== undefined && d.sisters_married !== undefined ? 1 : "",
+      "Family status": d.family_status, "Family values": d.family_values, "Native place": d.family_location, "About my family": d.about_family };
+    const missing = p.is_own ? Object.keys(need).filter((k) => !need[k] || String(need[k]).trim() === "") : [];
+    const todo = missing.length ? "<div class='mat-todo'><i class='fa-solid fa-circle-exclamation'></i><div><b>Complete your profile</b><p>Please add: " + esc(missing.join(", ")) + ".</p></div><a class='mat-btn sm' href='profile-form.php'><i class='fa-solid fa-pen'></i> Add details</a></div>" : "";
+    return todo + about +
+      sec("fa-id-card", "Personal information", personal) +
+      sec("fa-om", "Religion & horoscope", horoscope) +
+      sec("fa-graduation-cap", "Education & career", career) +
+      sec("fa-house", "Family information", family) +
+      sec("fa-mug-hot", "Lifestyle", life) +
+      (common ? "<section class='mat-psec mat-both'><h2><span><i class='fa-solid fa-heart'></i></span> Both of you like</h2>" + common + "</section>" : "") +
+      sec("fa-heart-circle-check", p.is_own ? "What I am looking for" : He + " partner preferences", prefs || "<p class='mat-hint'>Not added yet.</p>", fitNote);
+  }
+
   function render(p) {
     document.title = p.name + " (" + p.code + ") | PeopleLink Matrimony";
     const d = p.details || {}, pr = p.preferences || {};
@@ -73,18 +138,7 @@
       actions(p) + "<div style='margin-top:16px'>" + contact(p) + "</div>" +
       (!p.is_own && M.loggedIn ? "<div class='mat-actions'><button class='mat-btn danger sm' data-act='report'><i class='fa-solid fa-flag'></i> Report</button><button class='mat-btn ghost sm' data-act='block'><i class='fa-solid fa-ban'></i> " + (p.blocked ? "Unblock" : "Block") + "</button></div>" : "") +
       "</div></div>" +
-      "<div class='mat-panel' style='margin-top:18px'><h2><i class='fa-solid fa-user'></i> About</h2><p>" + (esc(p.intro || d.about_me) || "<span class='mat-hint'>Not added yet.</span>") + "</p>" +
-      "<div class='mat-facts'>" + fact("Date of birth", p.dob ? dt(p.dob) : "") + fact("Height", p.height) + fact("Marital status", p.marital) + fact("Mother tongue", p.mother_tongue) + fact("Sub-community", p.sub_community) + "</div></div>" +
-      "<div class='mat-panel'><h2><i class='fa-solid fa-graduation-cap'></i> Education & career</h2><div class='mat-facts'>" +
-      fact("Education", p.education) + fact("Profession", p.profession) + fact("Designation", d.designation) + fact("Company", d.company) + fact("Work location", d.work_location) + fact("Annual income", d.annual_income) + "</div></div>" +
-      "<div class='mat-panel'><h2><i class='fa-solid fa-people-roof'></i> Family</h2>" + (function () {
-        const fam = fact("Father", line([d.father_name, d.father_occupation])) + fact("Mother", line([d.mother_name, d.mother_occupation])) + fact("Siblings", siblings) + fact("Family type", d.family_type) + fact("Family location", d.family_location);
-        return fam ? "<div class='mat-facts'>" + fam + "</div>" : "<p class='mat-hint'>Not added yet.</p>";
-      })() + "</div>" +
-      "<div class='mat-panel'><h2><i class='fa-solid fa-heart-circle-check'></i> Partner preferences</h2>" +
-      (pr && (pr.age_min || pr.location || pr.education || pr.profession || pr.marital_status || pr.other)
-        ? "<div class='mat-facts'>" + fact("Age", pr.age_min || pr.age_max ? (pr.age_min || "18") + " – " + (pr.age_max || "any") + " yrs" : "") + fact("Location", pr.location) + fact("Education", pr.education) + fact("Profession", pr.profession) + fact("Marital status", pr.marital_status) + "</div>" + (pr.other ? "<p>" + esc(pr.other) + "</p>" : "")
-        : "<p class='mat-hint'>Not added yet.</p>") + "</div>";
+      details(p, d, pr);
 
     $$(".mat-thumbs img", box).forEach((t) => t.addEventListener("click", () => {
       $("#mainPhoto").src = t.dataset.full; $$(".mat-thumbs img", box).forEach((x) => x.classList.toggle("on", x === t));

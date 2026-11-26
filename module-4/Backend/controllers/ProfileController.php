@@ -8,6 +8,7 @@ $__create = $__orig('create_profile');
 pl_action('create_profile', function ($x) use ($__create) {
     if ($e = mat_check_dob($_POST, true)) return $e;
     if ($e = mat_check_profile($_POST, true)) return $e;
+    unset($_POST["profile_form"]); // form marker only, not profile data
     return $__create($x); // the existing code already records the "Profile submitted" notice
 });
 
@@ -15,6 +16,7 @@ $__update = $__orig('update_profile');
 pl_action('update_profile', function ($x) use ($__update) {
     if ($e = mat_check_dob($_POST, false)) return $e;
     if ($e = mat_check_profile($_POST, false)) return $e;
+    unset($_POST["profile_form"]);
     unset($_POST['gender']); // gender is fixed after creation
     return $__update($x);
 });
@@ -38,6 +40,7 @@ pl_action('profile', function ($x) use ($__profile) {
     $me = pl_my_profile($x['uid'], (int)$x['cid'] ?: null);
     if (!$me || $p['is_own']) { $p['match_percent'] = null; return $r; }
     $p['match_percent'] = mat_match(pl_prefs((int)$me['id']), $p);
+    [$p['pref_match'], $p['common']] = mat_viewer_fit($me, $p['preferences'] ?? [], $p['details'] ?? []);
     $cr = mat_contact_between((int)$me['id'], (int)$p['id']);
     $p['contact_request'] = $cr ? ['id' => (int)$cr['id'], 'status' => $cr['status'], 'direction' => (int)$cr['requester_profile_id'] === (int)$me['id'] ? 'sent' : 'received'] : null;
     if (!$p['contact_visible'] && mat_contact_unlocked((int)$me['id'], (int)$p['id'])) {

@@ -26,13 +26,16 @@ elseif (!$me) $__menu['me'] = ['profile-form.php?first=1', 'fa-user-plus', 'Crea
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 <link rel="stylesheet" href="<?= $F ?>header.css?v=8">
 <link rel="stylesheet" href="<?= $F ?>footer.css">
-<link rel="stylesheet" href="../css/matrimony.css?v=13">
+<link rel="stylesheet" href="../css/matrimony.css?v=17">
 <script>
 window.MAT = <?= json_encode([
     'api' => DASHBOARD_URL . 'api.php',
     'csrf' => csrf_token(),
     'loggedIn' => (bool)$user,
     'loginUrl' => mat_login_url(),
+    'logo' => $F . 'images/peoplelink-logo.png',
+    'signupUrl' => DASHBOARD_URL . 'signup.php?next=__NEXT__',
+    'forgotUrl' => DASHBOARD_URL . 'forgot-password.php',
     'community' => $comm ? ['id' => (int)$comm['id'], 'name' => $comm['name'], 'slug' => $comm['slug']] : null,
     'me' => $me ? ['id' => (int)$me['id'], 'code' => $me['profile_code'], 'status' => $me['status'], 'gender' => $me['gender']] : null,
 ], JSON_UNESCAPED_SLASHES) ?>;

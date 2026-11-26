@@ -5,7 +5,7 @@ $pr = pl_prefs((int)$me['id']); $pd = $pr['data'] ?? [];
 $val = fn($k, $dk = null) => e($pr[$k] ?? ($dk ? ($pd[$dk] ?? '') : ''));
 $multi = function (string $name, array $opts, string $cur) {
     $cur = array_map('trim', explode(',', $cur));
-    $h = '';
+    $h = '<input type="hidden" name="' . $name . '" value="">';
     foreach ($opts as $o) $h .= '<label class="mat-tag" style="cursor:pointer"><input type="checkbox" name="' . $name . '[]" value="' . e($o) . '"' . (in_array($o, $cur, true) ? ' checked' : '') . '> ' . e($o) . '</label> ';
     return '<div class="mat-actions" style="margin:0">' . $h . '</div>';
 };
@@ -21,7 +21,11 @@ include __DIR__ . '/../components/header.php';
       <div class="mat-f full"><label>Marital status</label><?= $multi('partner_marital_status', ['Never Married', 'Divorced', 'Widowed', 'Awaiting Divorce'], $pr['marital_status'] ?? '') ?></div>
       <div class="mat-f full"><label>Education</label><?= $multi('partner_education', ['Graduate', 'Post Graduate', 'Doctorate', 'Professional (CA / Medical / Law)', 'Diploma'], $pr['education'] ?? '') ?></div>
       <div class="mat-f"><label for="pprof">Profession</label><input id="pprof" name="partner_profession" maxlength="80" value="<?= $val('profession') ?>" placeholder="e.g. Engineer, Doctor"></div>
-      <div class="mat-f"><label for="ploc">Preferred location</label><input id="ploc" name="partner_location" maxlength="120" value="<?= $val('location') ?>" placeholder="e.g. Hyderabad, Telangana"></div>
+      <div class="mat-f full"><label>Preferred residing state</label><?= $multi('partner_states', ['Andhra Pradesh', 'Telangana', 'Karnataka', 'Tamil Nadu', 'Maharashtra', 'Kerala', 'Delhi', 'Abroad'], implode(', ', (array)($pd['partner_states'] ?? array_filter(['Andhra Pradesh', 'Telangana', 'Karnataka', 'Tamil Nadu', 'Maharashtra', 'Kerala', 'Delhi'], fn($s) => stripos((string)($pr['location'] ?? ''), $s) !== false)))) ?></div>
+      <div class="mat-f"><label for="pcity">Preferred residing city</label><input id="pcity" name="partner_city" maxlength="120" value="<?= e($pd['partner_city'] ?? '') ?>" placeholder="e.g. Hyderabad (leave empty for any)"></div>
+      <div class="mat-f"><label for="pcit">Preferred citizenship</label><select id="pcit" name="partner_citizenship"><?php foreach (['' => 'Any', 'Indian' => 'Indian', 'NRI / Overseas' => 'NRI / Overseas'] as $k => $l): ?><option value="<?= e($k) ?>"<?= ($pd['partner_citizenship'] ?? '') === $k ? ' selected' : '' ?>><?= e($l) ?></option><?php endforeach; ?></select></div>
+      <div class="mat-f"><label for="peat">Eating habits</label><select id="peat" name="partner_eating_habits"><?php foreach (['' => 'Any', 'Vegetarian' => 'Vegetarian', 'Non-vegetarian' => 'Non-vegetarian', 'Eggetarian' => 'Eggetarian'] as $k => $l): ?><option value="<?= e($k) ?>"<?= ($pd['partner_eating_habits'] ?? '') === $k ? ' selected' : '' ?>><?= e($l) ?></option><?php endforeach; ?></select></div>
+      <input type="hidden" name="partner_location" id="ploc" value="<?= $val('location') ?>">
       <div class="mat-f"><label for="pmt">Mother tongue</label><input id="pmt" name="partner_mother_tongue" maxlength="60" value="<?= e($pd['partner_mother_tongue'] ?? '') ?>" placeholder="e.g. Telugu"></div>
       <div class="mat-f full"><label for="pother">Anything else</label><textarea id="pother" name="other_preferences" maxlength="2000"><?= $val('other') ?></textarea></div>
     </div>

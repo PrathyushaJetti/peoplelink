@@ -163,16 +163,16 @@ $mhRegister = !$user ? DASHBOARD_URL . 'signup.php?next=' . urlencode(MAT_URL . 
   <section class="mx-box">
     <h2>Explore Matrimonial Profiles By</h2>
     <div class="mx-tabs" role="tablist">
-      <button type="button" class="on" data-mh-tab="comm" role="tab">Community</button>
+      <?php if ($cid): ?><button type="button" class="on" data-mh-tab="comm" role="tab">Community</button><?php endif; ?>
       <?php if ($mhCities): ?><button type="button" data-mh-tab="city" role="tab">City</button><?php endif; ?>
       <?php if ($mhStates): ?><button type="button" data-mh-tab="state" role="tab">State</button><?php endif; ?>
-      <button type="button" data-mh-tab="marital" role="tab">Marital Status</button>
+      <button type="button" data-mh-tab="marital" role="tab"<?= $cid ? '' : ' class="on"' ?>>Marital Status</button>
       <button type="button" data-mh-tab="age" role="tab">Age</button>
     </div>
-    <div class="mx-links" data-mh-panel="comm"><?php foreach ($mhComms as $c): ?><a href="index.php?c=<?= urlencode($c['slug']) ?>"><?= e($c['name']) ?> Matrimony</a><?php endforeach; ?></div>
+    <?php if ($cid): /* only the member's own community, never other castes */ ?><div class="mx-links" data-mh-panel="comm"><a href="search.php"><?= e($mhCommName) ?> Matrimony</a><?php foreach ($mhCities as $c): ?><a href="search.php?city=<?= urlencode($c['city']) ?>"><?= e($mhCommName) ?> Matrimony in <?= e(ucwords(strtolower($c['city']))) ?></a><?php endforeach; ?></div><?php endif; ?>
     <?php if ($mhCities): ?><div class="mx-links" data-mh-panel="city" hidden><?php foreach ($mhCities as $c): ?><a href="search.php?city=<?= urlencode($c['city']) ?>"><?= e(ucwords(strtolower($c['city']))) ?> Matrimony</a><?php endforeach; ?></div><?php endif; ?>
     <?php if ($mhStates): ?><div class="mx-links" data-mh-panel="state" hidden><?php foreach ($mhStates as $s): ?><a href="search.php?state=<?= urlencode($s['state']) ?>"><?= e(ucwords(strtolower($s['state']))) ?> Matrimony</a><?php endforeach; ?></div><?php endif; ?>
-    <div class="mx-links" data-mh-panel="marital" hidden><?php foreach (['Never Married', 'Divorced', 'Widowed', 'Awaiting Divorce'] as $m): ?><a href="search.php?marital_status=<?= urlencode($m) ?>"><?= e($m) ?> Matrimony</a><?php endforeach; ?></div>
+    <div class="mx-links" data-mh-panel="marital"<?= $cid ? ' hidden' : '' ?>><?php foreach (['Never Married', 'Divorced', 'Widowed', 'Awaiting Divorce'] as $m): ?><a href="search.php?marital_status=<?= urlencode($m) ?>"><?= e($m) ?> Matrimony</a><?php endforeach; ?></div>
     <div class="mx-links" data-mh-panel="age" hidden><?php foreach ([[21, 25], [26, 30], [31, 35], [36, 45]] as [$a, $b]): ?><a href="search.php?min_age=<?= $a ?>&amp;max_age=<?= $b ?>">Brides &amp; Grooms aged <?= $a ?>–<?= $b ?></a><?php endforeach; ?></div>
   </section>
 
@@ -189,7 +189,7 @@ $mhRegister = !$user ? DASHBOARD_URL . 'signup.php?next=' . urlencode(MAT_URL . 
     <h2>PeopleLink Matrimony Services</h2>
     <div class="mx-links">
       <a href="<?= e($mhRegister) ?>">Create Matrimony Profile</a><a href="search.php">Search Profiles</a><a href="interests.php">Interests</a><a href="contacts.php">Contacts</a>
-      <a href="saved.php">Saved Profiles</a><a href="packages.php">Premium Plans</a><a href="support.php">Help &amp; Support</a><a href="<?= $F ?>community-page.php">All Communities</a>
+      <a href="saved.php">Saved Profiles</a><a href="packages.php">Premium Plans</a><a href="support.php">Help &amp; Support</a>
     </div>
   </section>
 

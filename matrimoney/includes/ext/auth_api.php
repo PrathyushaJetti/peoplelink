@@ -16,16 +16,31 @@ function pl_auth_start(array $u): void {
 pl_action('login', function ($x) {
     $email = strtolower(trim((string)($_POST['email'] ?? '')));
     $pw = (string)($_POST['password'] ?? '');
-    if ($email === '' || $pw === '') return ['error' => 'Email and password are required.', 'code' => 'VALIDATION_ERROR'];
+    // optional: login with the 10-digit mobile number instead of email (matrimony login popup)
+    $mobile = substr(preg_replace('/\D/', '', (string)($_POST['phone'] ?? '')), -10);
+    $byPhone = $email === '' && $mobile !== '';
+    if ($byPhone && !preg_match('/^[6-9]\d{9}$/', $mobile)) return ['error' => 'Enter a valid 10-digit mobile number.', 'code' => 'VALIDATION_ERROR'];
+    if (($byPhone ? $mobile : $email) === '' || $pw === '') return ['error' => ($byPhone ? 'Mobile number' : 'Email') . ' and password are required.', 'code' => 'VALIDATION_ERROR'];
+    $who = $byPhone ? $mobile : $email;
     $ip = $_SERVER['REMOTE_ADDR'] ?? '';
-    if ((int)scalar('SELECT COUNT(*) FROM api_login_attempts WHERE (email=? OR ip=?) AND created_at > (NOW() - INTERVAL 10 MINUTE)', [$email, $ip]) >= 8) {
+    if ((int)scalar('SELECT COUNT(*) FROM api_login_attempts WHERE (email=? OR ip=?) AND created_at > (NOW() - INTERVAL 10 MINUTE)', [$who, $ip]) >= 8) {
         return ['error' => 'Too many attempts. Please try again after a few minutes.', 'code' => 'RATE_LIMITED', '_code' => 429];
     }
-    $u = rows('SELECT * FROM users WHERE email=?', [$email])[0] ?? null;
-    if (!$u || !password_verify($pw, (string)$u['password_hash'])) {
-        db()->prepare('INSERT INTO api_login_attempts (email, ip) VALUES (?,?)')->execute([$email, $ip]);
-        return ['error' => 'Invalid email or password.', 'code' => 'INVALID_CREDENTIALS', '_code' => 401];
+    $u = null;
+    if ($byPhone) { // a number can be on more than one account: use the one whose password matches
+        $hits = array_values(array_filter(rows("SELECT * FROM users WHERE phone<>'' AND RIGHT(REGEXP_REPLACE(phone, '[^0-9]', ''), 10)=?", [$mobile]),
+            fn($cand) => password_verify($pw, (string)$cand['password_hash'])));
+        if (count($hits) > 1) return ['error' => 'This mobile number is linked to more than one account. Please continue with your email.', 'code' => 'PHONE_AMBIGUOUS', '_code' => 409];
+        $u = $hits[0] ?? null;
+    } else {
+        $u = rows('SELECT * FROM users WHERE email=?', [$email])[0] ?? null;
+        if ($u && !password_verify($pw, (string)$u['password_hash'])) $u = null;
     }
+    if (!$u) {
+        db()->prepare('INSERT INTO api_login_attempts (email, ip) VALUES (?,?)')->execute([$who, $ip]);
+        return ['error' => 'Invalid ' . ($byPhone ? 'mobile number' : 'email') . ' or password.', 'code' => 'INVALID_CREDENTIALS', '_code' => 401];
+    }
+    $email = $who;
     db()->prepare('DELETE FROM api_login_attempts WHERE email=?')->execute([$email]);
     $blocked = pl_login_status_error($u) ?? pl_login_device_check($u, !empty($_POST['logout_oldest']) && $_POST['logout_oldest'] !== 'false');
     if ($blocked) return $blocked;

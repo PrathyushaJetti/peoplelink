@@ -92,3 +92,34 @@ function mat_dashboard(int $uid, int $cid, array $me): array {
         'notifications_unread' => scalar('SELECT COUNT(*) FROM user_notifications WHERE user_id=? AND is_read=0 AND type=?', [$uid, MAT_NOTIFY_TYPE]),
     ];
 }
+
+/* For the profile page: which of this member's partner preferences the viewer meets (true/false per preference),
+   and the lifestyle choices both of them share ("Both of you like"). */
+function mat_viewer_fit(array $viewer, array $prefs, array $theirDetails): array {
+    $vd = pl_details($viewer);
+    $low = fn($x) => strtolower(trim((string)$x));
+    $has = fn($x) => $x !== null && trim(is_array($x) ? implode('', $x) : (string)$x) !== '' && $low(is_array($x) ? '' : $x) !== 'any';
+    $in = function ($want, $have) use ($low) {
+        $have = $low($have); if ($have === '') return false;
+        foreach (is_array($want) ? $want : preg_split('/\s*[,\/]\s*/', (string)$want) as $w) { $w = $low($w); if ($w !== '' && (str_contains($have, $w) || str_contains($w, $have))) return true; }
+        return false;
+    };
+    $pd = $prefs['data'] ?? [];
+    $fit = [];
+    if ($has($prefs['age_min'] ?? null) || $has($prefs['age_max'] ?? null)) { $a = (int)$viewer['age']; $fit['age'] = $a && $a >= (int)($prefs['age_min'] ?: 0) && $a <= (int)($prefs['age_max'] ?: 99); }
+    if ($has($prefs['marital_status'] ?? null)) $fit['marital_status'] = $in($prefs['marital_status'], $viewer['marital_status']);
+    if ($has($prefs['education'] ?? null)) $fit['education'] = $in($prefs['education'], $viewer['education']);
+    if ($has($prefs['profession'] ?? null)) $fit['profession'] = $in($prefs['profession'], $viewer['profession']);
+    if ($has($pd['partner_mother_tongue'] ?? null)) $fit['mother_tongue'] = $in($pd['partner_mother_tongue'], $viewer['mother_tongue']);
+    if ($has($pd['partner_states'] ?? null)) $fit['states'] = $in($pd['partner_states'], $viewer['state']) || (in_array('abroad', array_map($low, (array)$pd['partner_states']), true) && $low($viewer['country'] ?: 'india') !== 'india');
+    if ($has($pd['partner_city'] ?? null)) $fit['city'] = $in($pd['partner_city'], $viewer['city']);
+    if ($has($pd['partner_citizenship'] ?? null)) { $indian = in_array($low($viewer['country'] ?: 'India'), ['india', 'indian'], true); $fit['citizenship'] = $pd['partner_citizenship'] === 'Indian' ? $indian : !$indian; }
+    if ($has($pd['partner_eating_habits'] ?? null)) $fit['eating_habits'] = $low($pd['partner_eating_habits']) === $low($vd['eating_habits'] ?? '');
+    $common = [];
+    foreach (['cuisine' => 'Cuisine', 'movies' => 'Movies', 'music' => 'Music', 'hobbies' => 'Hobbies', 'interests' => 'Interests'] as $k => $label) {
+        $mine = array_map($low, (array)($vd[$k] ?? []));
+        $both = array_values(array_filter((array)($theirDetails[$k] ?? []), fn($x) => trim((string)$x) !== '' && in_array($low($x), $mine, true)));
+        if ($both) $common[$label] = $both;
+    }
+    return [$fit, $common];
+}

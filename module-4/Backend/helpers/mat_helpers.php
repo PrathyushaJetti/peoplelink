@@ -34,7 +34,23 @@ function mat_check_profile(array $in, bool $create): ?array {
     $about = $val(['about_me', 'about']);
     if ($about !== '' && mb_strlen($about) < 20) return mat_err('Write at least 20 characters in About me.');
     if (($g = $val(['gender'])) !== '' && !in_array(strtolower($g), ['male', 'female'], true)) return mat_err('Choose Male or Female.');
-    foreach (['brothers', 'sisters'] as $k) if (isset($in[$k]) && $in[$k] !== '' && (!ctype_digit((string)$in[$k]) || (int)$in[$k] > 15)) return mat_err('Enter a valid number of ' . $k . '.');
+    foreach (['brothers', 'sisters', 'brothers_married', 'sisters_married'] as $k) if (isset($in[$k]) && $in[$k] !== '' && (!ctype_digit((string)$in[$k]) || (int)$in[$k] > 15)) return mat_err('Enter a valid number of ' . str_replace('_', ' ', $k) . '.');
+    // The website profile form (profile_form=2) makes personal, horoscope and family details mandatory.
+    // Older clients that do not send the marker keep the basic rules above.
+    if (($in['profile_form'] ?? '') === '2') {
+        $more = ['date of birth' => ['date_of_birth', 'dob'], 'profile created by' => ['profile_created_by'], 'height' => ['height'], 'weight' => ['weight'], 'body type' => ['body_type'],
+            'mother tongue' => ['mother_tongue'], 'eating habits' => ['eating_habits'], 'religion' => ['religion'], 'sub-caste' => ['sub_community'], 'gothram' => ['gothram'],
+            'star / nakshatram' => ['star'], 'raasi' => ['raasi'], 'kuja dosham' => ['kuja_dosham'],
+            "father's name" => ['father_name'], "father's occupation" => ['father_occupation'], "mother's name" => ['mother_name'], "mother's occupation" => ['mother_occupation'],
+            'number of brothers' => ['brothers'], 'married brothers' => ['brothers_married'], 'number of sisters' => ['sisters'], 'married sisters' => ['sisters_married'],
+            'family type' => ['family_type'], 'family status' => ['family_status'], 'family values' => ['family_values'], 'native place' => ['family_location'], 'about my family' => ['about_family']];
+        foreach ($more as $label => $keys) if ($val($keys) === '') return mat_err('Please enter ' . $label . '.');
+        if (!array_filter((array)($in['spoken_languages'] ?? []), fn($x) => trim((string)$x) !== '')) return mat_err('Please choose the spoken languages.');
+        if (strcasecmp($val(['marital_status']), 'Never Married') !== 0 && $val(['children']) === '') return mat_err('Please select children details.');
+        $w = (int)$val(['weight']); if ($w < 30 || $w > 200) return mat_err('Enter weight in kg (30–200).');
+        if (mb_strlen($val(['about_family'])) < 20) return mat_err('Write at least 20 characters in About my family.');
+        foreach (['brothers', 'sisters'] as $k) if ((int)$val([$k . '_married']) > (int)$val([$k])) return mat_err('Married ' . $k . ' cannot be more than the number of ' . $k . '.');
+    }
     return null;
 }
 
