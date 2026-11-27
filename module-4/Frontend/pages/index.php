@@ -203,7 +203,7 @@ $mhRegister = !$user ? DASHBOARD_URL . 'signup.php?next=' . urlencode(MAT_URL . 
 
 <script>
 document.querySelectorAll(".mx-search[data-go]").forEach(function (f) {
-  f.addEventListener("submit", function (ev) { ev.preventDefault(); location.href = f.dataset.go; });
+  f.addEventListener("submit", function (ev) { ev.preventDefault(); if (f.dataset.go.indexOf("signup.php") > -1 && window.MatSignup) MatSignup.open(); else location.href = f.dataset.go; });
 });
 document.querySelectorAll("[data-mh-tab]").forEach(function (b) {
   b.addEventListener("click", function () {

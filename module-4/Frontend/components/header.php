@@ -10,6 +10,7 @@ $__menu = [
     'notifications' => ['notifications.php', 'fa-bell', 'Alerts'],
     'packages' => ['packages.php', 'fa-crown', 'Packages'],
 ];
+$__pendingIn = $me ? (int)scalar("SELECT COUNT(*) FROM matrimony_interests WHERE receiver_id=? AND status='sent'", [$me['id']]) : 0; // new interests waiting in the Inbox
 $__unread = $uid ? scalar('SELECT COUNT(*) FROM user_notifications WHERE user_id=? AND is_read=0 AND type=?', [$uid, MAT_NOTIFY_TYPE]) : 0;
 // visitors and members without a profile see where to start instead of "My Profile"
 if (!$user) $__menu['me'] = [DASHBOARD_URL . 'signup.php?next=' . urlencode(MAT_URL . 'profile-form.php'), 'fa-user-plus', 'Sign Up / Login'];
@@ -26,7 +27,7 @@ elseif (!$me) $__menu['me'] = ['profile-form.php?first=1', 'fa-user-plus', 'Crea
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 <link rel="stylesheet" href="<?= $F ?>header.css?v=8">
 <link rel="stylesheet" href="<?= $F ?>footer.css">
-<link rel="stylesheet" href="../css/matrimony.css?v=17">
+<link rel="stylesheet" href="../css/matrimony.css?v=24">
 <script>
 window.MAT = <?= json_encode([
     'api' => DASHBOARD_URL . 'api.php',
@@ -47,7 +48,7 @@ window.MAT = <?= json_encode([
 <nav class="mat-subnav" aria-label="Matrimony menu">
   <div class="mat-wrap mat-subnav-in">
     <?php foreach ($__menu as $k => [$href, $ic, $label]): ?>
-      <a href="<?= $href ?>" class="<?= ($active ?? '') === $k ? 'on' : '' ?>"><i class="fa-solid <?= $ic ?>"></i><span><?= $label ?></span><?php if ($k === 'notifications' && $__unread): ?><b class="mat-dot" id="matUnread"><?= $__unread ?></b><?php endif; ?></a>
+      <a href="<?= $href ?>" class="<?= ($active ?? '') === $k ? 'on' : '' ?>"><i class="fa-solid <?= $ic ?>"></i><span><?= $label ?></span><?php if ($k === 'notifications' && $__unread): ?><b class="mat-dot" id="matUnread"><?= $__unread ?></b><?php endif; ?><?php if ($k === 'interests' && $__pendingIn): ?><b class="mat-dot"><?= $__pendingIn ?></b><?php endif; ?></a>
     <?php endforeach; ?>
   </div>
 </nav>

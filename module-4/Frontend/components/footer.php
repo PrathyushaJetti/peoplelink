@@ -9,9 +9,10 @@
 </div>
 <?php include __DIR__ . '/site-footer.php'; ?>
 <script src="<?= $F ?>header.js"></script>
-<script src="../js/mat-api.js?v=9"></script>
-<script src="../js/mat-login.js?v=2"></script>
-<?php foreach (($scripts ?? []) as $s): ?><script src="../js/<?= e($s) ?>?v=13"></script>
+<script src="../js/mat-api.js?v=12"></script>
+<script src="../js/mat-login.js?v=3"></script>
+<script src="../js/mat-signup.js?v=1"></script>
+<?php foreach (($scripts ?? []) as $s): ?><script src="../js/<?= e($s) ?>?v=16"></script>
 <?php endforeach; ?>
 </body>
 </html>

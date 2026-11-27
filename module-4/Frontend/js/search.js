@@ -63,6 +63,7 @@
     url.forEach((v, k) => {
       if (k === "age") { const m = v.match(/^(\d+)\s*-\s*(\d+)$/) || v.match(/^(\d+)\+$/); if (m) { form.min_age.value = m[1]; if (m[2]) form.max_age.value = m[2]; } return; }
       if (k === "sort") { sort.value = v; return; }
+      if (k === "page") { page = parseInt(v, 10) || 1; return; }
       const f = form.elements[k]; if (f) { f.value = v; if (k === "state") fillCities(); }
     });
     mark(); load();

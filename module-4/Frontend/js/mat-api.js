@@ -125,11 +125,28 @@
       "<div class='mat-chips'>" + [p.age ? p.age + " yrs" : "", p.height, p.marital].filter(Boolean).map((t) => "<span>" + esc(t) + "</span>").join("") + "</div>" +
       "<p class='mat-meta mat-meta-work'><i class='fa-solid fa-graduation-cap'></i> " + line([p.education, p.profession]) + "</p>" +
       "<p class='mat-meta'><i class='fa-solid fa-location-dot'></i> " + line([p.city, p.state]) + "</p>" +
-      (extra || "<div class='mat-card-a'><a class='mat-btn sm' href='profile.php?id=" + p.id + "'>View profile</a>" +
+      (extra || "<div class='mat-card-a'>" + (p.interest !== undefined || !M.me ? connectBtn(p) : "") + "<a class='mat-btn sm' href='profile.php?id=" + p.id + "'>View profile</a>" +
         "<button class='mat-btn sm ghost' data-save='" + p.id + "' aria-pressed='" + (p.saved ? "true" : "false") + "'><i class='fa-" + (p.saved ? "solid" : "regular") + " fa-bookmark'></i> " + (p.saved ? "Saved" : "Save") + "</button></div>") +
       "</div></article>";
   }
 
+  /* Connect = send interest (button on the profile cards) */
+  function connectBtn(p) {
+    const i = p.interest;
+    if (!i) return "<button class='mat-btn sm' data-connect='" + p.id + "'><i class='fa-solid fa-heart'></i> Connect</button>";
+    const w = i.status === "accepted" ? ["accepted", "fa-circle-check", "Connected"] : i.status === "sent" && i.direction === "received" ? ["sent", "fa-inbox", "Sent you interest"]
+      : i.status === "sent" ? ["sent", "fa-paper-plane", "Interest sent"] : ["rejected", "fa-circle-xmark", i.status === "rejected" ? "Declined" : "Withdrawn"];
+    return "<a class='mat-tag " + w[0] + " mat-card-state' href='interests.php'><i class='fa-solid " + w[1] + "'></i> " + w[2] + "</a>";
+  }
+  document.addEventListener("click", async (e) => {
+    const b = e.target.closest("[data-connect]"); if (!b) return;
+    e.preventDefault();
+    if (!M.loggedIn) { if (window.MatLogin) MatLogin.open(location.href); else location.href = M.loginUrl; return; }
+    if (!M.me) { if (await ask("Create your matrimony profile first to send interests.", "Create profile")) location.href = "profile-form.php?first=1"; return; }
+    if (M.me.status !== "approved") { toast("You can send interests once your profile is approved.", "err"); return; }
+    const r = await busy(b, () => post("send_interest", { profile_id: b.dataset.connect }));
+    if (report(r)) b.outerHTML = "<a class='mat-tag sent mat-card-state' href='interests.php#sent'><i class='fa-solid fa-paper-plane'></i> Interest sent</a>";
+  });
   /* Save / unsave buttons anywhere on the page */
   document.addEventListener("click", async (e) => {
     const b = e.target.closest("[data-save]"); if (!b) return;

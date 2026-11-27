@@ -86,5 +86,5 @@
     e.preventDefault();
     open(u.searchParams.get("next") || "");
   });
-  window.MatLogin = { open };
+  window.MatLogin = { open, close: () => { if (box && !box.hidden) close(); } };
 })();

@@ -9,7 +9,9 @@ pl_action('create_profile', function ($x) use ($__create) {
     if ($e = mat_check_dob($_POST, true)) return $e;
     if ($e = mat_check_profile($_POST, true)) return $e;
     unset($_POST["profile_form"]); // form marker only, not profile data
-    return $__create($x); // the existing code already records the "Profile submitted" notice
+    $r = $__create($x); // the existing code already records the "Profile submitted" notice
+    if (empty($r["error"])) unset($_SESSION["mat_signup"]); // sign-up popup answers are used once
+    return $r;
 });
 
 $__update = $__orig('update_profile');
@@ -58,6 +60,15 @@ pl_action('search', function ($x) use ($__search) {
     $me = $x['uid'] ? pl_my_profile($x['uid'], $x['cid'] ?: null) : null;
     $prefs = $me ? pl_prefs((int)$me['id']) : null;
     foreach ($r['profiles'] ?? [] as $k => $c) $r['profiles'][$k]['match_percent'] = mat_match($prefs, $c);
+    if ($me && !empty($r['profiles'])) {
+        $ids = array_map(fn($c) => (int)$c['id'], $r['profiles']); $ph = implode(',', array_fill(0, count($ids), '?'));
+        $st = [];
+        foreach (rows("SELECT id, sender_id, receiver_id, status FROM matrimony_interests WHERE (sender_id=? AND receiver_id IN ($ph)) OR (receiver_id=? AND sender_id IN ($ph)) ORDER BY id", array_merge([$me['id']], $ids, [$me['id']], $ids)) as $i) {
+            $other = (int)$i['sender_id'] === (int)$me['id'] ? (int)$i['receiver_id'] : (int)$i['sender_id'];
+            $st[$other] = ['id' => (int)$i['id'], 'status' => $i['status'], 'direction' => (int)$i['sender_id'] === (int)$me['id'] ? 'sent' : 'received'];
+        }
+        foreach ($r['profiles'] as $k => $c) $r['profiles'][$k]['interest'] = $st[(int)$c['id']] ?? null;
+    }
     return $r;
 }, true, false);
 
@@ -98,3 +109,34 @@ pl_action('report_profile', function ($x) {
 });
 
 unset($__orig, $__create, $__update, $__profile, $__search);
+
+/* mat_register: the step-by-step sign-up popup on the matrimony pages.
+   Same rules as matrimoney/signup.php, then the existing "register" action creates the account.
+   The new account joins the community being viewed, and the answers prefill the Create Profile form. */
+pl_action('mat_register', function ($x) {
+    $__register = $GLOBALS['PL_ACTIONS']['register']['fn']; // the existing account-creation action
+    require_once dirname(__DIR__, 3) . '/matrimoney/includes/password_reset.php';
+    $in = fn($k) => trim((string)($_POST[$k] ?? ''));
+    $for = $in('profile_for'); $gender = $in('gender'); $name = $in('name'); $dob = $in('dob');
+    $phone = substr(preg_replace('/\D/', '', $in('phone')), -10); $email = strtolower($in('email'));
+    $forMap = ['Myself' => 'Self', 'My Son' => 'Parent', 'My Daughter' => 'Parent', 'My Brother' => 'Sibling', 'My Sister' => 'Sibling', 'My Relative' => 'Relative', 'My Friend' => 'Friend'];
+    if (!isset($forMap[$for])) return mat_err('Please choose who this profile is for.');
+    if (in_array($for, ['My Son', 'My Brother'], true)) $gender = 'Male';
+    if (in_array($for, ['My Daughter', 'My Sister'], true)) $gender = 'Female';
+    if (!in_array($gender, ['Male', 'Female'], true)) return mat_err('Please choose the gender.');
+    if (mb_strlen($name) < 2 || mb_strlen($name) > 100) return mat_err('Please enter the full name.');
+    if ($e = mat_check_dob(['date_of_birth' => $dob], true)) return $e;
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) return mat_err('Please enter a valid email address.');
+    if (!preg_match('/^[6-9]\d{9}$/', $phone)) return mat_err('Please enter a valid 10-digit mobile number.');
+    if ($p = pl_password_problem((string)($_POST['password'] ?? ''), (string)($_POST['confirm'] ?? ''))) return mat_err($p);
+    $_POST['phone'] = $phone; $_POST['email'] = $email; $_POST['name'] = $name;
+    $r = $__register($x);
+    if (!empty($r['error'])) return $r;
+    // join the community being viewed (a member account belongs to one community)
+    if ($x['cid'] && ($uid = (int)($_SESSION['uid'] ?? $_SESSION['user_id'] ?? 0) ?: (int)scalar('SELECT id FROM users WHERE email=?', [$email]))) {
+        db()->prepare('UPDATE users SET community_id=? WHERE id=? AND community_id IS NULL')->execute([$x['cid'], $uid]);
+    }
+    $_SESSION['mat_signup'] = ['profile_created_by' => $forMap[$for], 'gender' => $gender, 'full_name' => $name, 'date_of_birth' => $dob,
+        'religion' => $in('religion'), 'mother_tongue' => $in('mother_tongue')];
+    return ['message' => 'Account created.', 'next' => MAT_URL . 'profile-form.php?first=1'];
+}, true, true);

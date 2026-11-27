@@ -23,6 +23,13 @@
       "<span class='mat-tag " + esc(p.interest_status) + "'>" + (p.interest_status === "sent" ? "awaiting reply" : esc(p.interest_status)) + "</span> <small>" + ago(p.interest_at) + "</small>",
       (p.interest_status === "sent" ? "<button class='mat-btn ghost sm' data-withdraw='" + p.interest_id + "'>Withdraw</button>" : "") + "<a class='mat-btn ghost sm' href='profile.php?id=" + p.id + "'>View</a>", p.message)).join("") + "</div>"
       : empty("fa-paper-plane", "You have not sent any interest", "Search profiles and send interest to the ones you like.", "<a class='mat-btn' href='search.php'>Search profiles</a>");
+    // declined and withdrawn interests, both directions
+    const dec = r.received.filter((x) => x.interest_status === "rejected").map((x) => Object.assign({ _who: "you declined" }, x))
+      .concat(r.sent.filter((x) => x.interest_status === "rejected").map((x) => Object.assign({ _who: "they declined" }, x)))
+      .concat(r.sent.filter((x) => x.interest_status === "withdrawn").map((x) => Object.assign({ _who: "you withdrew" }, x)));
+    $("#nDec").textContent = dec.length;
+    $("[data-pane=declined]").innerHTML = dec.length ? "<div class='mat-rows'>" + dec.map((p) => row(p, "<span class='mat-tag rejected'>" + esc(p._who) + "</span> <small>" + ago(p.interest_at) + "</small>", "<a class='mat-btn ghost sm' href='profile.php?id=" + p.id + "'>View</a>")).join("") + "</div>"
+      : empty("fa-ban", "Nothing here", "Declined and withdrawn interests appear here.");
     $("[data-pane=accepted]").innerHTML = acc.length ? "<div class='mat-rows'>" + acc.map((p) => row(p, "<span class='mat-tag accepted'>connected</span> <small>contact details visible on profile</small>", "<button type='button' class='mat-btn sm' data-contact='" + p.id + "'><i class='fa-solid fa-address-card'></i> View contact</button>")).join("") + "</div>"
       : empty("fa-handshake", "No accepted interests yet", "When an interest is accepted, both of you can see contact details.");
   }

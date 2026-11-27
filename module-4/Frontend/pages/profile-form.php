@@ -3,7 +3,7 @@ require __DIR__ . '/../components/init.php';
 mat_need_login();
 if (!$cid) { header('Location: ' . $F . 'community-page.php?next=' . urlencode($_SERVER['REQUEST_URI'] ?? '/peoplelink/module-4/Frontend/pages/index.php')); exit; }
 $edit = (bool)$me;
-$d = $me ? pl_details($me) : [];
+$d = $me ? pl_details($me) : (array)($_SESSION['mat_signup'] ?? []); // new profile: answers from the sign-up popup
 $v = function (string $k, ?string $col = null) use ($me, $d) {
     $val = $col && $me ? ($me[$col] ?? '') : '';
     if ($val === '' || $val === null) $val = $d[$k] ?? '';
@@ -50,14 +50,14 @@ include __DIR__ . '/../components/header.php';
       <div class="mat-f"><label for="f_full_name">Full name <?= $R ?></label><input id="f_full_name" name="full_name" required maxlength="120" value="<?= $v('full_name', 'full_name') ?>" data-msg="Please enter the full name."></div>
       <div class="mat-f"><label for="f_gender">Gender <?= $R ?></label>
         <?php if ($edit): ?><input id="f_gender" value="<?= e($me['gender']) ?>" disabled><span class="mat-hint">Contact support to change gender.</span>
-        <?php else: ?><?= $sel('gender', ['Female', 'Male'], '', 'Select', true) ?><?php endif; ?></div>
-      <div class="mat-f"><label for="f_dob">Date of birth <?= $R ?></label><input id="f_dob" type="date" name="date_of_birth" required min="<?= $dobMin ?>" max="<?= $dobMax ?>" value="<?= e($me['dob'] ?? '') ?>" data-msg="Enter a valid date of birth (you must be <?= MAT_MIN_AGE ?>+)."><span class="mat-hint">Age is calculated from this. Minimum age <?= MAT_MIN_AGE ?>.</span></div>
+        <?php else: ?><?= $sel('gender', ['Female', 'Male'], (string)($d['gender'] ?? ''), 'Select', true) ?><?php endif; ?></div>
+      <div class="mat-f"><label for="f_dob">Date of birth <?= $R ?></label><input id="f_dob" type="date" name="date_of_birth" required min="<?= $dobMin ?>" max="<?= $dobMax ?>" value="<?= e($me['dob'] ?? $d['date_of_birth'] ?? '') ?>" data-msg="Enter a valid date of birth (you must be <?= MAT_MIN_AGE ?>+)."><span class="mat-hint">Age is calculated from this. Minimum age <?= MAT_MIN_AGE ?>.</span></div>
       <div class="mat-f"><label for="f_height">Height <?= $R ?></label><?= $sel('height', $heights, html_entity_decode($v('height', 'height'), ENT_QUOTES), 'Select', true) ?></div>
       <div class="mat-f"><label for="f_weight">Weight (kg) <?= $R ?></label><input id="f_weight" name="weight" type="number" min="30" max="200" required inputmode="numeric" value="<?= e($dv('weight')) ?>" data-msg="Enter weight in kg (30–200)."></div>
       <div class="mat-f"><label for="f_body_type">Body type <?= $R ?></label><?= $sel('body_type', ['Slim', 'Average', 'Athletic', 'Heavy'], $dv('body_type'), 'Select', true) ?></div>
       <div class="mat-f"><label for="f_marital_status">Marital status <?= $R ?></label><?= $sel('marital_status', ['Never Married', 'Divorced', 'Widowed', 'Awaiting Divorce'], $me['marital_status'] ?? '', 'Select', true) ?></div>
       <div class="mat-f" id="childrenWrap"><label for="f_children">Children <?= $R ?></label><?= $sel('children', ['No children', '1 child – living with me', '1 child – not living with me', '2 children', '3 or more children'], $dv('children'), 'Select', true) ?></div>
-      <div class="mat-f"><label for="f_mother_tongue">Mother tongue <?= $R ?></label><?= $sel('mother_tongue', ['Telugu', 'Hindi', 'Tamil', 'Kannada', 'Malayalam', 'Marathi', 'Urdu', 'English', 'Other'], $me['mother_tongue'] ?? '', 'Select', true) ?></div>
+      <div class="mat-f"><label for="f_mother_tongue">Mother tongue <?= $R ?></label><?= $sel('mother_tongue', ['Telugu', 'Hindi', 'Tamil', 'Kannada', 'Malayalam', 'Marathi', 'Urdu', 'English', 'Other'], $me['mother_tongue'] ?? (string)($d['mother_tongue'] ?? ''), 'Select', true) ?></div>
       <div class="mat-f"><label for="f_eating_habits">Eating habits <?= $R ?></label><?= $sel('eating_habits', ['Vegetarian', 'Non-vegetarian', 'Eggetarian', 'Vegan'], $dv('eating_habits'), 'Select', true) ?></div>
       <div class="mat-f full"><label>Spoken languages <?= $R ?></label><?= $multi('spoken_languages', ['Telugu', 'English', 'Hindi', 'Tamil', 'Kannada', 'Malayalam', 'Marathi', 'Urdu', 'Other'], true) ?></div>
       </div>

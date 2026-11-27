@@ -312,6 +312,7 @@ function pl_card(array $r, bool $withContact = false): array {
         'city' => $r['city'], 'district' => $r['district'] ?? '', 'state' => $r['state'] ?? '', 'country' => $r['country'] ?? '',
         'community' => $r['community_name'] ?? ($d['community'] ?? ''), 'sub_community' => $d['sub_community'] ?? '', 'mother_tongue' => $r['mother_tongue'] ?? '',
         // a card shows the photo only when the member lets everyone eligible see it
+        'religion' => $d['religion'] ?? '', 'star' => $d['star'] ?? '', 'income' => $d['annual_income'] ?? '', 'eating' => $d['eating_habits'] ?? '', 'employed_in' => $d['employed_in'] ?? '',
         'intro' => $r['about'] ?? '', 'photo' => (($d['privacy']['photoPrivacy'] ?? 'eligible') === 'eligible') ? ($r['photo'] ?? null) : null, 'created_at' => $r['created_at'], 'status' => $r['status'],
     ];
     if ($withContact) { $card['phone'] = $r['phone'] ?? ''; $card['email'] = $r['email'] ?? ''; }
@@ -339,6 +340,23 @@ function pl_search(int $cid, array $f = [], int $page = 1, int $per = 12, ?int $
     // A value that exists in the column (every dropdown option) matches exactly, so "Graduate" does not also return
     // "Post Graduate" and "Married" does not return "Never Married". Typed text that matches no value still finds partial matches.
     $f['marital_status'] = $f['marital'] ?? $f['marital_status'] ?? '';
+    // Shaadi-style filters (all optional; older clients that send single values are unaffected)
+    $clean = fn($v) => array_values(array_filter(array_map(fn($x) => trim((string)$x), (array)$v), fn($x) => $x !== '' && strtolower($x) !== 'any'));
+    $in = fn(array $v) => implode(',', array_fill(0, count($v), '?'));
+    foreach (['marital_status', 'education', 'mother_tongue', 'state', 'city', 'profession'] as $k) { // several ticked choices: column IN (...)
+        if (!is_array($f[$k] ?? null) && !($k === 'mother_tongue' && trim((string)($f[$k] ?? '')) !== '')) continue;
+        $vals = $clean($f[$k]); unset($f[$k]);
+        if ($vals) { $w .= " AND TRIM(p.$k) IN (" . $in($vals) . ')'; array_push($a, ...$vals); }
+    }
+    foreach (['star', 'raasi', 'kuja_dosham', 'eating_habits', 'annual_income', 'religion', 'smoking', 'drinking'] as $k) { // details saved with the profile form
+        $vals = $clean($f[$k] ?? []);
+        if ($vals) { $w .= " AND (CASE WHEN JSON_VALID(p.details) THEN JSON_UNQUOTE(JSON_EXTRACT(p.details, '$.$k')) END) IN (" . $in($vals) . ')'; array_push($a, ...$vals); }
+    }
+    if (!empty($f['with_photo'])) $w .= " AND EXISTS (SELECT 1 FROM matrimony_photos ph2 WHERE ph2.profile_id=p.id AND ph2.status='approved')";
+    if (in_array((int)($f['joined'] ?? 0), [1, 7, 30], true)) { $w .= ' AND p.created_at >= (NOW() - INTERVAL ? DAY)'; $a[] = (int)$f['joined']; }
+    $inches = "(CAST(TRIM(SUBSTRING_INDEX(p.height, '''', 1)) AS UNSIGNED) * 12 + CAST(TRIM(REPLACE(SUBSTRING_INDEX(p.height, '''', -1), '\"', '')) AS UNSIGNED))";
+    if (($h = (int)($f['min_height_in'] ?? 0)) > 0) { $w .= " AND p.height LIKE '%''%' AND $inches >= ?"; $a[] = $h; }
+    if (($h = (int)($f['max_height_in'] ?? 0)) > 0) { $w .= " AND p.height LIKE '%''%' AND $inches <= ?"; $a[] = $h; }
     foreach (['marital_status', 'education', 'profession', 'country', 'state', 'district', 'city'] as $k) {
         $v = trim((string)($f[$k] ?? ''));
         if ($v === '' || strtolower($v) === 'any') continue;
